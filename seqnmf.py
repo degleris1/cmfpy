@@ -54,10 +54,10 @@ DEFAULT_OPTIONS = {
     'lam': 0.001,
     'W_init': None,
     'H_init': None,
-    'show_plot': True,
+    'show_plot': False,
     'maxiter': 100,
     'tol': -np.inf,
-    'shift': True,
+    'shift': False,
     'lamL1W': 0,
     'lamL1H': 0,
     'W_fixed': False,
@@ -107,8 +107,6 @@ def seq_nmf(X, **kwargs):
      power                     Fraction power in data explained 
                                    by whole reconstruction
     """
-    print('Not yet implemented!')
-
     X, N, T, K, L, params = _parse_params(X, kwargs)  # Parse input
 
     W = params['W_init'].copy()  # Initialize
@@ -148,15 +146,25 @@ def seq_nmf(X, **kwargs):
         if(not params['W_fixed']):
             W = _updateW(X, N, T, K, L, params, W, H, smooth_kernel)
 
-        # Calculate cost for this iteration
+        Xhat = _reconstruct(W, H)  # Calculate cost for this iteration
+        cost_data += [_calc_cost(X, Xhat)]
 
-        # Plot to show progress
+        if (params['show_plot']):  # Plot to show progress
+            _simple_plot(W, H, Xhat, 0)
 
+        if (last_time): 
+            break
 
-        print("TODO")
-        if (last_time): break
+    # Undo zeropadding
+    X = X[:,L:-L]
+    Xhat = Xhat[:,L:-L]
+    H =  H[:,L:-L]
 
-    return W, H, cost_data#, loadings, power
+    # Compute explained power of reconstruction and each factor
+    power = (la.norm(X)**2 - la.norm(X-Xhat)**2) / la.norm(X)**2
+    loadings = []  # TODO
+
+    return W, H, cost_data, loadings, power
 
 
 def _parse_params(X, kwargs):
@@ -193,6 +201,13 @@ def _zero_pad(A, L):
     """
     N,T = A.shape
     return np.block([np.zeros([N, L]), A, np.zeros([N,L])])
+
+
+def _not_eye(K):
+    """
+    Returns a KxK matrix with 0's along the main diagonal and 1's elsewhere.
+    """
+    return -np.eye(K) + 1
 
 
 def _reconstruct(W, H):
@@ -248,10 +263,10 @@ def _updateH(X, N, T, K, L, params, W, H, Xhat, smooth_kernel):
     # Compute regularization terms for H update
     dRdH = 0; dHHdH = 0
     if (params['lam'] > 0):
-        dRdH = (-np.eye(K)+1).dot(convolve2d(WTX, smooth_kernel, 'same'))
+        dRdH = _not_eye(K).dot(convolve2d(WTX, smooth_kernel, 'same'))
         dRdH = dRdH * params['lam']
     if (params['lam_orthoH'] > 0):
-        dHHdH = (-np.eye(K)+1).dot(convolve2d(H, smooth_kernel, 'same'))
+        dHHdH = _not_eye(K).dot(convolve2d(H, smooth_kernel, 'same'))
         dHHdH = dHHdH * params['lam_orthoH']
     dRdH = dRdH + dHHdH + params['lamL1H']  # Include L1 sparsity
 
@@ -264,12 +279,13 @@ def _updateW(X, N, T, K, L, params, W, H, smooth_kernel):
     """
     Update W.
     """
+    Wnew = np.zeros(W.shape)
     # Update each W[:,:,l] separately
     Xhat = _reconstruct(W, H)
+    if (params['lam'] > 0 and params['useWupdate']):
+        XS = convolve2d(X, smooth_kernel, 'same')
     if (params['lam_orthoW'] > 0):
         Wflat = np.sum(W, axis=2)
-    if (params['lam'] > 0 and params['useWupdate']):
-        XS = np.convolve2d(X, smooth_kernel, 'same')
 
     for l in range(L):  # TODO parallelize?
         # Compute the terms for the CNMF W update
@@ -279,12 +295,20 @@ def _updateW(X, N, T, K, L, params, W, H, smooth_kernel):
 
         # Compute regularization terms for W update
         dRdW = 0; dWWdW = 0
-        
+        if (params['lam'] > 0 and params['useWupdate']):
+            dRdW = params['lam'] * XS.dot(H_shifted.T).dot(_not_eye(K))
+        if (params['lam_orthoW'] > 0):
+            dWWdW = params['lam_orthoW'] * Wflat.dot(_not_eye(K))
+        dRdW = dRdW + dWWdW + params['lamL1W']  # Include L1 sparsity
 
-
-
+        # Update W
+        num = np.multiply(W[:,:,l], XHT); denom = XhatHT + dRdW + EPSILON
+        Wnew[:,:,l] = np.divide(num, denom)
+    return Wnew
 
 
 def _shift_factors(W, H):
     raise "Not yet implemented."
 
+def _simple_plot(W, H, Xhat, n):
+    raise "Not yet implemented."
