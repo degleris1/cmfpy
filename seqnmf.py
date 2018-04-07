@@ -162,7 +162,15 @@ def seq_nmf(X, **kwargs):
 
     # Compute explained power of reconstruction and each factor
     power = (la.norm(X)**2 - la.norm(X-Xhat)**2) / la.norm(X)**2
-    loadings = []  # TODO
+    loadings = _compute_loadings(X, W, H)
+
+    # Sort factors by loading power
+    if (params['sort_factors']):
+        ind = np.argsort(loadings)[::-1]
+        W = W[:,ind,:]
+        H = H[ind,:]
+        loadings = [loadings[i] for i in ind]
+
 
     return W, H, cost_data, loadings, power
 
@@ -305,6 +313,20 @@ def _updateW(X, N, T, K, L, params, W, H, smooth_kernel):
         num = np.multiply(W[:,:,l], XHT); denom = XhatHT + dRdW + EPSILON
         Wnew[:,:,l] = np.divide(num, denom)
     return Wnew
+
+
+def _compute_loadings(X, W, H):
+    """
+    Compute the fraction of power explained by each factor.
+    """
+    loadings = []; K,T = H.shape
+
+    varv = la.norm(X)**2
+    for i in range(K):
+        WH = _reconstruct(W[:,i:i+1,:], H[i:i+1,:])
+        loadings += [np.sum(2*np.multiply(X, WH) - np.power(WH, 2)) / varv]
+
+    return loadings
 
 
 def _shift_factors(W, H):
