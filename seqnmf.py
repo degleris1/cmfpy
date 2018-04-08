@@ -57,7 +57,7 @@ DEFAULT_OPTIONS = {
     'show_plot': False,
     'maxiter': 100,
     'tol': -np.inf,
-    'shift': False,
+    'shift': True,
     'lamL1W': 0,
     'lamL1H': 0,
     'W_fixed': False,
@@ -321,16 +321,43 @@ def _compute_loadings(X, W, H):
     """
     loadings = []; K,T = H.shape
 
-    varv = la.norm(X)**2
+    varx = la.norm(X)**2
     for i in range(K):
         WH = _reconstruct(W[:,i:i+1,:], H[i:i+1,:])
-        loadings += [np.sum(2*np.multiply(X, WH) - np.power(WH, 2)) / varv]
+        loadings += [np.sum(2*np.multiply(X, WH) - np.power(WH, 2)) / varx]
 
     return loadings
 
 
 def _shift_factors(W, H):
+    """
+    Shift factors by center of mass.
+    """
     raise "Not yet implemented."
+    N,K,L = W.shape; K,T = H.shape
+    if (L == 1):  # No room to shift
+        return W, H
+
+    center = int(np.max([np.floor(L / 2.), 1]))
+
+    # Pad with zeros for shifting
+    Wpad = np.block([np.zeros([N,K,L]), W, np.zeros([N,K,L])])
+
+    for k in range(K):
+        temp = np.sum(W[:,k,:], axis=0)
+        #if (np.sum(temp) < 10**(-10)):
+        #    print(temp)
+        #    raise "Problem here."
+
+        ind = np.linspace(1, len(temp), num=len(temp), endpoint=True)
+        cmass = int(np.max(np.floor(np.sum(temp.dot(ind) / (np.sum(temp) + EPSILON) ))))
+
+        Wpad[:,k,:] = np.roll(Wpad[:,k,:], [0, center-cmass])
+        H[k,:] = np.roll(H[k,:], [0, cmass-center])
+
+    W = Wpad[:,:,L:-L]  
+
+    return W, H
 
 def _simple_plot(W, H, Xhat, n):
     raise "Not yet implemented."
