@@ -1,36 +1,36 @@
 
 """
- USAGE: 
+ USAGE:
 
  [W, H, cost, loadings, power] = seqNMF(X, ...     X is the data matrix
        'K', 10, 'L', 20, 'lambda', .1, ...         Other inputs optional
        'W_init', W_init, 'H_init', H_init, ...
-       'showPlot', 1, 'maxiter', 20, 'tolerance', -Inf, 'shift', 1, ... 
+       'showPlot', 1, 'maxiter', 20, 'tolerance', -Inf, 'shift', 1, ...
        'competeW', 0, 'competeH', 0, 'lambdaL1W', 0, 'lambdaL1H', 0, ...
        'lambdaOrthoH', 0, 'lambdaOrthoW', 0)
 
  ------------------------------------------------------------------------------
  DESCRIPTION:
 
-   Factorizes the NxT data matrix X into K factors 
+   Factorizes the NxT data matrix X into K factors
    Factor exemplars are returned in the NxKxL tensor W
    Factor timecourses are returned in the KxT matrix H
 
-                                    ----------    
+                                    ----------
                                 L  /         /|
                                   /         / |
         ----------------         /---------/  |          ----------------
         |              |         |         |  |          |              |
-      N |      X       |   =   N |    W    |  /   (*)  K |      H       |           
+      N |      X       |   =   N |    W    |  /   (*)  K |      H       |
         |              |         |         | /           |              |
         ----------------         /----------/            ----------------
                T                      K                         T
- See paper: 
+ See paper:
    XXXXXXXXXXXXXXXXX
 
  ------------------------------------------------------------------------------
  CREDITS:
-   Based off of the MATLAB code provided by Emily Mackevicius and Andrew 
+   Based off of the MATLAB code provided by Emily Mackevicius and Andrew
    Bahle, 2/1/2018. Python translation by Anthony Degleris and Alex Williams,
    4/6/2018.
 
@@ -38,7 +38,7 @@
    (https://link.springer.com/chapter/10.1007/978-3-540-30110-3_63)
    Adapted from NMF toolbox by Colin Vaz 2015 (http://sail.usc.edu)
 
-   Please cite our paper: 
+   Please cite our paper:
    https://www.biorxiv.org/content/early/2018/03/02/273128
 """
 
@@ -46,18 +46,19 @@ import numpy as np
 import numpy.linalg as la
 from copy import deepcopy
 from scipy.signal import convolve2d
+from tqdm import trange
 
 
 DEFAULT_OPTIONS = {
     'K': 10,
     'L': 100,
-    'lam': 0.001,
+    'lam': 0.0,
     'W_init': None,
     'H_init': None,
     'show_plot': False,
     'maxiter': 100,
     'tol': -np.inf,
-    'shift': True,
+    'shift': False,
     'lamL1W': 0,
     'lamL1H': 0,
     'W_fixed': False,
@@ -108,21 +109,20 @@ def seq_nmf(X, **kwargs):
                                    by whole reconstruction
     """
     X, N, T, K, L, params = _parse_params(X, kwargs)  # Parse input
-
     W = params['W_init'].copy()  # Initialize
     H = params['H_init'].copy()
     Xhat = _reconstruct(W, H)
-    smooth_kernel = np.ones([1,2*L-1])  # TODO check this (row vector)
+    smooth_kernel = np.ones([1, 2*L-1])  # TODO check this (row vector)
     small_num = np.max(X) * (10**-6)
     last_time = False
 
     cost_data = [_calc_cost(X, Xhat)]  # Calculate initial cost
 
-    for it in range(params['maxiter']):
+    for it in trange(params['maxiter']):
         # Stopping criteria
         cost_change = cost_data[it] - np.mean(cost_data[it-5:it])
         if ((it == params['maxiter'] - 1)
-            or ((it > 5) and cost_change <= params['tol'])):
+           or ((it > 5) and cost_change <= params['tol'])):
             # Reached max iteration or below tolerance
             last_time = True
             if (it != 0):
@@ -140,7 +140,7 @@ def seq_nmf(X, **kwargs):
         norms = la.norm(H, axis=1)
         H = np.diag(np.divide(1, norms+EPSILON)).dot(H)
         for l in range(L):
-            W[:,:,l] = W[:,:,l].dot(np.diag(norms))
+            W[:, :, l] = W[:, :, l].dot(np.diag(norms))
 
         # Update W
         if(not params['W_fixed']):
@@ -152,13 +152,12 @@ def seq_nmf(X, **kwargs):
         if (params['show_plot']):  # Plot to show progress
             _simple_plot(W, H, Xhat, 0)
 
-        if (last_time): 
-            break
+    print(it)
 
     # Undo zeropadding
-    X = X[:,L:-L]
-    Xhat = Xhat[:,L:-L]
-    H =  H[:,L:-L]
+    X = X[:, L:-L]
+    Xhat = Xhat[:, L:-L]
+    H = H[:, L:-L]
 
     # Compute explained power of reconstruction and each factor
     power = (la.norm(X)**2 - la.norm(X-Xhat)**2) / la.norm(X)**2
@@ -167,10 +166,9 @@ def seq_nmf(X, **kwargs):
     # Sort factors by loading power
     if (params['sort_factors']):
         ind = np.argsort(loadings)[::-1]
-        W = W[:,ind,:]
-        H = H[ind,:]
+        W = W[:, ind, :]
+        H = H[ind, :]
         loadings = [loadings[i] for i in ind]
-
 
     return W, H, cost_data, loadings, power
 
@@ -187,18 +185,20 @@ def _parse_params(X, kwargs):
             raise ValueError('Parameter \'' + keyword + '\' not recognized.')
         params[keyword] = kwargs[keyword]
         # TODO add type detection
-    K = params['K']; L = params['L']; N,T = X.shape
+    K = params['K']
+    L = params['L']
+    N, T = X.shape
 
     # Initialize W_init and H_init, if not provided
     if (type(params['W_init']) != np.ndarray):
         params['W_init'] = np.max(X) * np.random.rand(N, K, L)
     if (type(params['H_init']) != np.ndarray):
         params['H_init'] = (np.max(X) / np.sqrt(T / 3.)) * np.random.rand(K, T)
-    
+
     # Zeropad data by L
-    X = _zero_pad(X,L)
+    X = _zero_pad(X, L)
     params['H_init'] = _zero_pad(params['H_init'], L)  # TODO check this with Alex
-    N,T = X.shape  # Padded shape
+    N, T = X.shape  # Padded shape
 
     return X, N, T, K, L, params
 
@@ -207,8 +207,8 @@ def _zero_pad(A, L):
     """
     Adds L columns of zeros to each side of the matrix A.
     """
-    N,T = A.shape
-    return np.block([np.zeros([N, L]), A, np.zeros([N,L])])
+    N, T = A.shape
+    return np.block([np.zeros([N, L]), A, np.zeros([N, L])])
 
 
 def _not_eye(K):
@@ -234,7 +234,8 @@ def _reconstruct(W, H):
     Xhat : ndarray
         The reconstructed NxT matrix given by Xhat = W (*) H
     """
-    N,K,L = W.shape; K,T = H.shape
+    N, K, L = W.shape
+    K, T = H.shape
 
     # Zeropad by L
     H = _zero_pad(H, L)
@@ -243,7 +244,7 @@ def _reconstruct(W, H):
     for tau in range(L):  # Convolve
         Xhat = Xhat + W[:,:,tau].dot(np.roll(H, [0, tau]))
 
-    return Xhat[:,L:-L]
+    return Xhat[:, L:-L]
 
 def _calc_cost(X, Xhat):
     """
@@ -258,30 +259,31 @@ def _updateH(X, N, T, K, L, params, W, H, Xhat, smooth_kernel):
     Update H.
     """
     # Compute terms for CNMF H update
-    WTX = np.zeros([K,T])
-    WTXhat = np.zeros([K,T])
+    WTX = np.zeros([K, T])
+    WTXhat = np.zeros([K, T])
 
     for l in range(L):
-        X_shifted = np.roll(X,[0,-l]) 
-        WTX = WTX + W[:,:,l].T.dot(X_shifted) 
-        
-        Xhat_shifted = np.roll(Xhat, [0,-l])
-        WTXhat = WTXhat + W[:,:,l].T.dot(Xhat_shifted)
+        X_shifted = np.roll(X, [0, -l])
+        WTX = WTX + W[:, :, l].T.dot(X_shifted)
+
+        Xhat_shifted = np.roll(Xhat, [0, -l])
+        WTXhat = WTXhat + W[:, :, l].T.dot(Xhat_shifted)
 
     # Compute regularization terms for H update
-    dRdH = 0; dHHdH = 0
+    dRdH = 0
+    dHHdH = 0
     if (params['lam'] > 0):
         dRdH = _not_eye(K).dot(convolve2d(WTX, smooth_kernel, 'same'))
         dRdH = dRdH * params['lam']
     if (params['lam_orthoH'] > 0):
         dHHdH = _not_eye(K).dot(convolve2d(H, smooth_kernel, 'same'))
         dHHdH = dHHdH * params['lam_orthoH']
-    dRdH = dRdH + dHHdH + params['lamL1H']  # Include L1 sparsity
 
     # Update H
-    num = np.multiply(H, WTX); denom = WTXhat + dRdH + EPSILON
+    num = np.multiply(H, WTX)
+    denom = WTXhat + dRdH + dHHdH + params['lamL1H'] + EPSILON
     return np.divide(num, denom)
-   
+
 
 def _updateW(X, N, T, K, L, params, W, H, smooth_kernel):
     """
@@ -302,7 +304,8 @@ def _updateW(X, N, T, K, L, params, W, H, smooth_kernel):
         XhatHT = Xhat.dot(H_shifted.T)
 
         # Compute regularization terms for W update
-        dRdW = 0; dWWdW = 0
+        dRdW = 0
+        dWWdW = 0
         if (params['lam'] > 0 and params['useWupdate']):
             dRdW = params['lam'] * XS.dot(H_shifted.T).dot(_not_eye(K))
         if (params['lam_orthoW'] > 0):
