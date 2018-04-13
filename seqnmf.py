@@ -48,27 +48,12 @@ from copy import deepcopy
 from scipy.signal import convolve2d
 
 
-DEFAULT_OPTIONS = {
-    'K': 10,
-    'L': 100,
-    'lam': 0.0,
-    'W_init': None,
-    'H_init': None,
-    'show_plot': False,
-    'maxiter': 100,
-    'tol': -np.inf,
-    'shift': False,
-    'lamL1W': 0,
-    'lamL1H': 0,
-    'W_fixed': False,
-    'sort_factors': True,
-    'lam_orthoH': 0.001,
-    'lam_orthoW': 0.001,
-    'useWupdate': True
-}
 EPSILON = np.finfo(np.float32).eps
 
-def seq_nmf(X, **kwargs):
+def seq_nmf(X, K=10, L=100, lam=0.001, W_init=None, H_init=None, show_plot=False,
+            maxiter=100, tol=-np.inf, shift=True, lamL1W=0, lamL1H=0, 
+            W_fixed=False, sort_factors=True, lam_orthoH=0, lam_orthoW=0,
+            useWupdate=True):
     """
     INPUTS:
     ---
@@ -118,9 +103,22 @@ def seq_nmf(X, **kwargs):
      power                     Fraction power in data explained 
                                    by whole reconstruction
     """
-    X, N, T, K, L, params = _parse_params(X, kwargs)  # Parse input
-    W = params['W_init'].copy()  # Initialize
-    H = params['H_init'].copy()
+    N, T = X.shape
+
+    # Initialize W_init and H_init, if not provided
+    if (type(W_init) != np.ndarray):
+        W_init = np.max(X) * np.random.rand(N, K, L)
+    if (type(H_init) != np.ndarray):
+        H_init = (np.max(X) / np.sqrt(T / 3.)) * np.random.rand(K, T)
+
+    # Zeropad data by L
+    X = _zero_pad(X, L)
+    H_init = _zero_pad(H_init, L)  # TODO check this with Alex
+    N, T = X.shape  # Padded shape
+
+    W = W_init.copy()  # Initialize
+    H = H_init.copy()
+
     Xhat = _reconstruct(W, H)
     smooth_kernel = np.ones([1, 2*L-1])  # TODO check this (row vector)
     small_num = np.max(X) * (10**-6)
@@ -128,20 +126,21 @@ def seq_nmf(X, **kwargs):
 
     cost_data = [_calc_cost(X, Xhat)]  # Calculate initial cost
 
-    for it in range(params['maxiter']):
+    for it in range(maxiter):
         # Stopping criteria
-        if ((it == params['maxiter'] - 1)
-           or ((it > 5) and cost_data[it] - np.mean(cost_data[it-5:it]) <= params['tol'])):
+        if ((it == maxiter - 1)
+           or ((it > 5) and cost_data[it] - np.mean(cost_data[it-5:it]) <= tol)):
             # Reached max iteration or below tolerance
             last_time = True
-            if (it != 0):
-                params['lambda'] = 0  # Prioritize reconstruction
+            #if (it != 0):
+            #    lam = 0  # Prioritize reconstruction
 
         # Update H
-        H = _updateH(X, N, T, K, L, params, W, H, Xhat, smooth_kernel)
+        H = _updateH(X, N, T, K, L, lam, lam_orthoH, lam_orthoW, lamL1H,
+                     W, H, Xhat, smooth_kernel)
 
         # Shift to center factors
-        if (params['shift']):
+        if (shift):
             W, H = _shift_factors(W, H)
             W = W + small_num  # Add a small number to shifted W's
 
@@ -152,13 +151,14 @@ def seq_nmf(X, **kwargs):
             W[:, :, l] = W[:, :, l].dot(np.diag(norms))
 
         # Update W
-        if(not params['W_fixed']):
-            W = _updateW(X, N, T, K, L, params, W, H, smooth_kernel)
+        if(not W_fixed):
+            W = _updateW(X, N, T, K, L, lam, lam_orthoW, lam_orthoH, lamL1W, 
+                         useWupdate, W, H, smooth_kernel)
 
         Xhat = _reconstruct(W, H)  # Calculate cost for this iteration
         cost_data += [_calc_cost(X, Xhat)]
 
-        if (params['show_plot']):  # Plot to show progress
+        if (show_plot):  # Plot to show progress
             _simple_plot(W, H, Xhat, 0)
 
     # Undo zeropadding
@@ -167,11 +167,11 @@ def seq_nmf(X, **kwargs):
     H = H[:, L:-L]
 
     # Compute explained power of reconstruction and each factor
-    power = (la.norm(X)**2 - la.norm(X-Xhat)**2) / la.norm(X)**2
+    power = 1 - la.norm(X-Xhat)**2 / la.norm(X)**2
     loadings = _compute_loadings(X, W, H)
 
     # Sort factors by loading power
-    if (params['sort_factors']):
+    if (sort_factors):
         ind = np.argsort(loadings)[::-1]
         W = W[:, ind, :]
         H = H[ind, :]
@@ -185,6 +185,8 @@ def _parse_params(X, kwargs):
     Parse the user's keyword arguments, setting unspecified parameters to
     their default values.
     """
+    raise Exception('Deprecated')
+    
     params = deepcopy(DEFAULT_OPTIONS)  # Deepcopy to prevent modifying defaults 
 
     for keyword in kwargs:  # Replace defaults with user parameters.  
@@ -208,6 +210,7 @@ def _parse_params(X, kwargs):
     N, T = X.shape  # Padded shape
 
     return X, N, T, K, L, params
+
 
 
 def _zero_pad(A, L):
@@ -261,7 +264,8 @@ def _calc_cost(X, Xhat):
     return la.norm(X - Xhat) / np.sqrt(X.size)
 
 
-def _updateH(X, N, T, K, L, params, W, H, Xhat, smooth_kernel):
+def _updateH(X, N, T, K, L, lam, lam_orthoH, lam_orthoW, lamL1H,
+             W, H, Xhat, smooth_kernel):
     """
     Update H.
     """
@@ -279,29 +283,30 @@ def _updateH(X, N, T, K, L, params, W, H, Xhat, smooth_kernel):
     # Compute regularization terms for H update
     dRdH = 0
     dHHdH = 0
-    if (params['lam'] > 0):
+    if (lam > 0):
         dRdH = _not_eye(K).dot(convolve2d(WTX, smooth_kernel, 'same'))
-        dRdH = dRdH * params['lam']
-    if (params['lam_orthoH'] > 0):
+        dRdH = dRdH * lam
+    if (lam_orthoH > 0):
         dHHdH = _not_eye(K).dot(convolve2d(H, smooth_kernel, 'same'))
-        dHHdH = dHHdH * params['lam_orthoH']
+        dHHdH = dHHdH * lam_orthoH
 
     # Update H
     num = np.multiply(H, WTX)
-    denom = WTXhat + dRdH + dHHdH + params['lamL1H'] + EPSILON
+    denom = WTXhat + dRdH + dHHdH + lamL1H + EPSILON
     return np.divide(num, denom)
 
 
-def _updateW(X, N, T, K, L, params, W, H, smooth_kernel):
+def _updateW(X, N, T, K, L, lam, lam_orthoW, lam_orthoH, lamL1W, useWupdate, 
+             W, H, smooth_kernel):
     """
     Update W.
     """
     Wnew = np.zeros(W.shape)
     # Update each W[:,:,l] separately
     Xhat = _reconstruct(W, H)
-    if (params['lam'] > 0 and params['useWupdate']):
+    if (lam > 0 and useWupdate):
         XS = convolve2d(X, smooth_kernel, 'same')
-    if (params['lam_orthoW'] > 0):
+    if (lam_orthoW > 0):
         Wflat = np.sum(W, axis=2)
 
     for l in range(L):  # TODO parallelize?
@@ -313,11 +318,11 @@ def _updateW(X, N, T, K, L, params, W, H, smooth_kernel):
         # Compute regularization terms for W update
         dRdW = 0
         dWWdW = 0
-        if (params['lam'] > 0 and params['useWupdate']):
-            dRdW = params['lam'] * XS.dot(H_shifted.T).dot(_not_eye(K))
-        if (params['lam_orthoW'] > 0):
-            dWWdW = params['lam_orthoW'] * Wflat.dot(_not_eye(K))
-        dRdW = dRdW + dWWdW + params['lamL1W']  # Include L1 sparsity
+        if (lam > 0 and useWupdate):
+            dRdW = lam * XS.dot(H_shifted.T).dot(_not_eye(K))
+        if (lam_orthoW > 0):
+            dWWdW = lam_orthoW * Wflat.dot(_not_eye(K))
+        dRdW = dRdW + dWWdW + lamL1W  # Include L1 sparsity
 
         # Update W
         num = np.multiply(W[:,:,l], XHT); denom = XhatHT + dRdW + EPSILON
@@ -345,9 +350,9 @@ def _shift_factors(W, H):
     """
     N,K,L = W.shape; K,T = H.shape
     if (L == 1):  # No room to shift
-        raise "No room to shift. Disable shifting."
-
-    center = int(np.max([np.floor(L / 2.), 1]))
+        raise Exception("No room to shift. Disable shifting.")
+        
+    center = int(np.floor(L / 2.))
 
     # Pad with zeros for shifting
     Wpad = np.block([np.zeros([N,K,L]), W, np.zeros([N,K,L])])
@@ -359,7 +364,8 @@ def _shift_factors(W, H):
         #    raise "Problem here."
 
         ind = np.linspace(1, len(temp), num=len(temp), endpoint=True)
-        cmass = int(np.max(np.floor(np.sum(temp.dot(ind) / (np.sum(temp)) ))))
+        ind = np.arange(0, L)
+        cmass = int(np.floor(temp.dot(ind) / np.sum(temp)))
 
         Wpad[:,k,:] = np.roll(Wpad[:,k,:], [0, center-cmass])
         H[k,:] = np.roll(H[k,:], [0, cmass-center])
@@ -369,4 +375,4 @@ def _shift_factors(W, H):
     return W, H
 
 def _simple_plot(W, H, Xhat, n):
-    raise "Not yet implemented."
+    raise Exception("Not yet implemented.")
