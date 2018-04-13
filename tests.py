@@ -42,9 +42,9 @@ def test_seq_nmf(N=100, T=120, L=10, K=5):
     losses = []
     for k in range(1, 2*K+1):
         if (k == K):
-            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=2*L, lam=10**(-6), maxiter=200, shift=True)
+            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=2*L, lam=10**(-6), maxiter=200, H_init=realH)
         else:
-            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=2*L, lam=10**(-6), maxiter=200, shift=True)
+            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=2*L, lam=10**(-6), maxiter=200)
 
         losses.append(power)
 
@@ -59,7 +59,8 @@ def test_seq_nmf(N=100, T=120, L=10, K=5):
     #estH = estH[list(prm_est)]
 
     #print('Hdiff: ', np.linalg.norm(estH - realH) / np.linalg.norm(realH))
-    print('Percent error: ', la.norm(data - _reconstruct(estW, estH)) / la.norm(data))
+    error = data - _reconstruct(estW, estH)
+    print('Percent error: ', la.norm(error)**2 / la.norm(data)**2)
 
     # Plot real H vs estimated H
     fig, axes = plt.subplots(2, 1)
@@ -67,7 +68,6 @@ def test_seq_nmf(N=100, T=120, L=10, K=5):
     axes[1].imshow(estH)
 
     # Plot reconstruction error
-    error = data - _reconstruct(estW, estH)
     plt.figure()
     plt.imshow(np.abs(error), cmap='gray')
     plt.colorbar()
@@ -78,8 +78,6 @@ def test_seq_nmf(N=100, T=120, L=10, K=5):
     plt.xlabel('rank')
     plt.ylabel('cost')
     plt.show()
-
-    return costhist
 
 if (__name__ == 'main'):
     test_seq_nmf()
