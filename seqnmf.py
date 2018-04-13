@@ -57,13 +57,13 @@ DEFAULT_OPTIONS = {
     'show_plot': False,
     'maxiter': 100,
     'tol': -np.inf,
-    'shift': True,
-    'lamL1W': 0,
-    'lamL1H': 0,
+    'shift': False,
+    'lamL1W': 0.001,
+    'lamL1H': 0.001,
     'W_fixed': False,
     'sort_factors': True,
-    'lam_orthoH': 0,
-    'lam_orthoW': 0,
+    'lam_orthoH': 0.001,
+    'lam_orthoW': 0.001,
     'useWupdate': True
 }
 EPSILON = np.finfo(np.float32).eps
