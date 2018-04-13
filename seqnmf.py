@@ -46,7 +46,6 @@ import numpy as np
 import numpy.linalg as la
 from copy import deepcopy
 from scipy.signal import convolve2d
-from tqdm import trange
 
 
 DEFAULT_OPTIONS = {
@@ -59,7 +58,6 @@ DEFAULT_OPTIONS = {
     'maxiter': 100,
     'tol': -np.inf,
     'shift': False,
-
     'lamL1W': 0,
     'lamL1H': 0,
     'W_fixed': False,
@@ -74,30 +72,42 @@ def seq_nmf(X, **kwargs):
     """
     INPUTS:
     ---
-      X : ndarray
-          Data matrix (NxT) to factorize
+     X : ndarray
+            Data matrix (NxT) to factorize
      K : int (optional, default value, 10)
-         Number of factors
-
-    #TODO
-
-    L               100                                 Length (timebins) of each factor exemplar
-    lam             .001                                Regularization parameter
-    W_init          max(X(:))*rand(N,K,L)               Initial W
-    H_init          max(X(:))*rand(K,T)./(sqrt(T/3))    Initial H (rows have norm ~1 if max(data) is 1)
-    show_plot       True                                Plot every iteration? no=0
-    maxiter         100                                 Maximum # iterations to run
-    shift           1                                   Shift factors to center; Helps avoid local minima
-    lamL1W          0                                   L1 sparsity parameter; Increase to make W's more sparse
-    lamL1H          0                                   L1 sparsity parameter; Increase to make H's more sparse
-    W_fixed         False                               Fix W during the fitting proceedure   
-    sort_factors    1                                   Sort factors by loadings
-    lam_orthoH      0                                   ||HSH^T||_1,i~=j; Encourages events-based factorizations
-    lam_orthoW      0                                   ||Wflat^TWflat||_1,i~=j; ; Encourages parts-based factorizations
-    useWupdate      1                                   Wupdate for cross orthogonality often doesn't change results much, and can be slow, so option to remove  
+            Number of factors
+     L : int (optional, default value, 100)
+            Length (timebins) of each factor exemplar
+     lam : float (optional, default value, 0.001)             
+            Regularization parameter
+     W_init : ndarray (optional, default value, np.max(X)*rand(N,K,L))
+            Initial W
+     H_init : ndarray (optional, default value, np.max(X)*rand(K,T) / (sqrt(T/3))
+            Initial H (rows have norm ~1 if max(data) is 1)
+     show_plot : bool (optional, default value, True)
+            Plot every iteration? no=0
+     maxiter : int (optional, default value, 100)
+            Maximum # iterations to run
+     shift : bool (optional, default value, True)
+            Shift factors to center; Helps avoid local minima
+     lamL1W : float (optional, default value, 0)
+            L1 sparsity parameter; Increase to make W's more sparse
+     lamL1H  : float (optional, default value, 0)
+            L1 sparsity parameter; Increase to make H's more sparse
+     W_fixed : bool (optional, default value, False)
+            Fix W during the fitting proceedure   
+     sort_factors : bool (optional, default value, True)
+            Sort factors by loadings
+     lam_orthoH : float (optional, default value, 0) 
+            ||HSH^T||_1,i~=j; Encourages events-based factorizations
+     lam_orthoW : float (optional, default value, 0)
+            ||Wflat^TWflat||_1,i~=j; ; Encourages parts-based factorizations
+     useWupdate : bool (optional, defaul value, True)
+            Wupdate for cross orthogonality often doesn't change results much,
+            and can be slow, so option to remove  
     ------------------------------------------------------------------------
-     OUTPUTS:
-
+    OUTPUTS:
+    ---
      W                         NxKxL tensor containing factor exemplars
      H                         KxT matrix containing factor timecourses
      cost_data                 1x(#Iterations+1) vector containing 
@@ -118,11 +128,10 @@ def seq_nmf(X, **kwargs):
 
     cost_data = [_calc_cost(X, Xhat)]  # Calculate initial cost
 
-    for it in trange(params['maxiter']):
+    for it in range(params['maxiter']):
         # Stopping criteria
-        cost_change = cost_data[it] - np.mean(cost_data[it-5:it])
         if ((it == params['maxiter'] - 1)
-           or ((it > 5) and cost_change <= params['tol'])):
+           or ((it > 5) and cost_data[it] - np.mean(cost_data[it-5:it]) <= params['tol'])):
             # Reached max iteration or below tolerance
             last_time = True
             if (it != 0):
@@ -151,8 +160,6 @@ def seq_nmf(X, **kwargs):
 
         if (params['show_plot']):  # Plot to show progress
             _simple_plot(W, H, Xhat, 0)
-
-    print(it)
 
     # Undo zeropadding
     X = X[:, L:-L]
@@ -336,10 +343,9 @@ def _shift_factors(W, H):
     """
     Shift factors by center of mass.
     """
-    raise "Not yet implemented."
     N,K,L = W.shape; K,T = H.shape
     if (L == 1):  # No room to shift
-        return W, H
+        raise "No room to shift. Disable shifting."
 
     center = int(np.max([np.floor(L / 2.), 1]))
 
@@ -353,7 +359,7 @@ def _shift_factors(W, H):
         #    raise "Problem here."
 
         ind = np.linspace(1, len(temp), num=len(temp), endpoint=True)
-        cmass = int(np.max(np.floor(np.sum(temp.dot(ind) / (np.sum(temp) + EPSILON) ))))
+        cmass = int(np.max(np.floor(np.sum(temp.dot(ind) / (np.sum(temp)) ))))
 
         Wpad[:,k,:] = np.roll(Wpad[:,k,:], [0, center-cmass])
         H[k,:] = np.roll(H[k,:], [0, cmass-center])

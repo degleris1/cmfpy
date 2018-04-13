@@ -1,7 +1,9 @@
 import numpy as np
+import numpy.linalg as la
 from seqnmf import seq_nmf
+from seqnmf import _reconstruct
 import matplotlib.pyplot as plt
-from munkres import Munkres
+#from munkres import Munkres
 
 
 def seq_nmf_data(N, T, L, K):
@@ -33,41 +35,51 @@ def seq_nmf_data(N, T, L, K):
     return data, W, H
 
 
-def test_seq_nmf():
-    data, realW, realH = seq_nmf_data(100, 101, 10, 5)
-    realH /= np.linalg.norm(realH, axis=-1, keepdims=True)
+def test_seq_nmf(N=100, T=120, L=10, K=5):
+    data, realW, realH = seq_nmf_data(N, T, L, K)
+    realH /= la.norm(realH, axis=-1, keepdims=True)
 
     losses = []
-
-    for k in range(1, 10):
-        if k == 5:
-            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=20, H_init=realH)
+    for k in range(1, 2*K+1):
+        if (k == K):
+            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=2*L, lam=10**(-6), maxiter=200)
         else:
-            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=20)
+            W, H, costhist, loadings, power = seq_nmf(data, K=k, L=2*L, lam=10**(-6), maxiter=200)
 
         losses.append(power)
 
-        if k == 5:
+        if (k == K):
             estH = H
             estW = W
 
     # Use Munkres algorithm to match rows of H and estH
-    matchcost = 1 - np.dot(realH, estH.T)
-    indices = Munkres().compute(matchcost.copy())
-    _, prm_est = zip(*indices)
-    estH = estH[list(prm_est)]
+    #matchcost = 1 - np.dot(realH, estH.T)
+    #indices = Munkres().compute(matchcost.copy())
+    #_, prm_est = zip(*indices)
+    #estH = estH[list(prm_est)]
 
-    print('Hdiff: ', np.linalg.norm(estH - realH) / np.linalg.norm(realH))
+    #print('Hdiff: ', np.linalg.norm(estH - realH) / np.linalg.norm(realH))
+    print('Percent error: ', la.norm(data - _reconstruct(estW, estH)) / la.norm(data))
+    print(costhist)
 
+
+
+    # Plot real H vs estimated H
     fig, axes = plt.subplots(2, 1)
-    axes[0].imshow(realH / np.linalg.norm(realH, axis=-1, keepdims=True))
+    axes[0].imshow(realH / la.norm(realH, axis=-1, keepdims=True))
     axes[1].imshow(estH)
 
+    # Plot reconstruction error
     plt.figure()
-    plt.imshow(data, cmap='gray')
+    plt.imshow(data - _reconstruct(estW, estH), cmap='gray')
+    plt.colorbar()
 
+    # Plot losses
     plt.figure()
     plt.plot(np.arange(len(losses))+1, losses)
     plt.xlabel('rank')
     plt.ylabel('cost')
     plt.show()
+
+if (__name__ == 'main'):
+    test_seq_nmf()
