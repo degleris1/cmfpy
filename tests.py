@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 #from munkres import Munkres
 
 
-def seq_nmf_data(N, T, L, K):
+def seq_nmf_data(N, T, L, K, sparsity=0.75):
     """Creates synthetic dataset for conv NMF
 
     Args
@@ -23,8 +23,8 @@ def seq_nmf_data(N, T, L, K):
 
     # low-rank data
     W, H = np.random.rand(N, K), np.random.rand(K, T)
-    W[W < .5] = 0
-    H[H < .8] = 0
+    W[W < sparsity] = 0
+    H[H < sparsity] = 0
     lrd = np.dot(W, H)
 
     # add a random shift to each row

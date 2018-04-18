@@ -162,6 +162,8 @@ def seq_nmf(X, K=10, L=100, lam=0.001, W_init=None, H_init=None, show_plot=False
             _simple_plot(W, H, Xhat, 0)
 
     # Undo zeropadding
+    Hpad = H.copy()
+    Xpad = X.copy()
     X = X[:, L:-L]
     Xhat = Xhat[:, L:-L]
     H = H[:, L:-L]
