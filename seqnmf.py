@@ -365,12 +365,13 @@ def _shift_factors(W, H):
         #    print(temp)
         #    raise "Problem here."
 
-        ind = np.linspace(1, len(temp), num=len(temp), endpoint=True)
-        ind = np.arange(0, L)
-        cmass = int(np.floor(temp.dot(ind) / np.sum(temp)))
+        if (np.sum(temp) > EPSILON):
+            ind = np.linspace(1, len(temp), num=len(temp), endpoint=True)
+            ind = np.arange(0, L)
+            cmass = int(np.floor(temp.dot(ind) / np.sum(temp)))
 
-        Wpad[:,k,:] = np.roll(Wpad[:,k,:], [0, center-cmass])
-        H[k,:] = np.roll(H[k,:], [0, cmass-center])
+            Wpad[:,k,:] = np.roll(Wpad[:,k,:], [0, center-cmass])
+            H[k,:] = np.roll(H[k,:], [0, cmass-center])
 
     W = Wpad[:,:,L:-L]  
 
