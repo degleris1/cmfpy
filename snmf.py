@@ -4,7 +4,9 @@ A Python implementation of seqNMF.
 Written by Alex Williams and Anthony Degleris.
 """
 import numpy as np
-import matplotlib.pyplot as pyplot
+import matplotlib.pyplot as plt
+
+EPSILON = np.finfo(np.float32).eps
 
 
 # TODO: subclass np.ndarray?
@@ -41,7 +43,7 @@ class ShiftMatrix(object):
 
 
 
-    class ConvNMF(object):
+class ConvNMF(object):
 
     def __init__(self, n_components, maxlag, tol=1e-5, n_iter_max=100,
                  l1_W=0.0, l1_H=0.0):
@@ -62,7 +64,7 @@ class ShiftMatrix(object):
         self.loss_hist = None
 
 
-    def fit(self, data, alg='mult'):
+    def fit(self, data, alg='bcd'):
         # Check input
         if (data < 0).any():
             raise ValueError('Negative values in data to fit')
@@ -77,23 +79,23 @@ class ShiftMatrix(object):
 
         # optimize
         if (alg == 'bcd'):
-            self._fit_bcd(data, m, n, step_type='backtrack')
+            self._fit_bcd(data, step_type='backtrack')
         elif (alg == 'mult'):
-            self._fit_mult(data, m, n)
+            self._fit_bcd(data, step_type='mult')
 
         return self
 
 
 
-    def _fit_bcd(self, data, m, n, step_type='backtrack')
-
+    def _fit_bcd(self, data, step_type='backtrack'):
+        m, n = data.shape
         converged, itr = False, 0
 
         # initial calculation of W gradient
         loss_1, grad_W = self._compute_gW(data)
         self.loss_hist = [loss_1]
 
-        for itr in trange(self.n_iter_max):
+        for itr in range(self.n_iter_max):
             # update W
             step_W = self._scale_gW(grad_W, step_type)
             self.W = np.maximum(self.W - np.multiply(step_W, grad_W), 0)
@@ -102,7 +104,7 @@ class ShiftMatrix(object):
             _, grad_H = self._compute_gH(data)
 
             # update W
-            step_H = self._scale_gH(gradH, step_type)
+            step_H = self._scale_gH(grad_H, step_type)
             self.H.assign(np.maximum(self.H.shift(0) - np.multiply(step_H, grad_H), 0))
 
             # compute gradient of W
@@ -124,20 +126,9 @@ class ShiftMatrix(object):
 
         # check that W and H are fit
         self._check_is_fitted()
-        W, H = self.W, self. H
 
-        # dimensions
-        m, n = W.shape[1], H.shape[1]
-
-        # preallocate result
-        result = np.zeros((m, n))
-
-        # iterate over lags
-        for w, t in zip(W, self._shifts):
-            result += np.dot(w, H.shift(t))
-
-        return result
-
+        return _tensor_conv(self.W, self.H, self._shifts)
+       
 
     def _check_is_fitted(self):
         if self.W is None or self.H is None:
@@ -151,7 +142,7 @@ class ShiftMatrix(object):
         Root Mean Squared Error
         """
         resid = (self.predict() - data.shift(0)).ravel()
-        return np.sqrt(np.mean(np.dot(resid, resid)))
+        return np.sqrt(np.mean(np.multiply(resid, resid)))  # TODO: multiply or dot
 
 
     def _compute_gW(self, data):
@@ -179,28 +170,95 @@ class ShiftMatrix(object):
         # compute gradient
         # TODO: speed up with broadcasting
         # Note: can sum up all the Wl.T first and then dot product
-        Hgrad = np.zeros(self.H.shape)
-        for l, t in enumerate(self._shifts):
-            dh = np.dot(self.W[l].T, resid)
-            Hgrad += _shift(dh, -t)
+        #Hgrad = np.zeros(self.H.shape)
+        #for l, t in enumerate(self._shifts):
+        #    dh = np.dot(self.W[l].T, resid)
+        #    Hgrad += _shift(dh, -t)
 
+        # compute grad
+        resid = ShiftMatrix(resid, self.maxlag)
+        Hgrad = _tensor_transconv(self.W, resid, self._shifts)
+        
         # compute loss
-        r = resid.ravel()
+        r = resid.shift(0).ravel()
         loss = np.sqrt(np.mean(np.dot(r, r)))
 
         return loss, Hgrad
 
 
     def _scale_gW(self, grad_W, step_type):
-        return 0.00001
+        if (step_type == 'backtrack'):
+            step_W = 0.00001
+
+        elif (step_type == 'mult'):
+            # preallocate
+            step_W = np.zeros(grad_W.shape)
+
+            estimate = self.predict()
+            H, W = self.H, self.W
+            for l, t in enumerate(self._shifts):
+                step_W[l] = np.divide(W[l], np.dot(estimate, H.shift(t).T) + EPSILON)
+            
+        else:
+            raise ValueError('Invalid BCD step type.')
+
+        return step_W
 
 
     def _scale_gH(self, grad_H, step_type):
-        return 0.00001
+        if (step_type == 'backtrack'):
+            step_H = 0.00001
 
+        elif (step_type == 'mult'):
+            estimate = ShiftMatrix(self.predict(), self.maxlag)
+            W, H, shifts = self.W, self.H.shift(0), self._shifts
+            step_H = np.divide(H, _tensor_transconv(W, estimate, shifts) + EPSILON)
+
+        else:
+            raise ValueError('Invalid BCD step type.')
+
+        return step_H
 
     # TODO: compute the lipschitz constant for optimal learning rate
     # TODO: backtracking line search
+
+
+
+def _tensor_conv(W, H, shifts):
+    """
+    Convolves a tensor W and ShiftMatrix H.
+    """
+   
+    # preallocate result
+    m, n = W.shape[1], H.shape[1]
+    result = np.zeros((m, n))
+
+    # iterate over lags
+    for w, t in zip(W, shifts):
+        result += np.dot(w, H.shift(t))
+
+    return result
+
+
+def _tensor_transconv(W, X, shifts):
+    """
+    Transpose tensor convolution of tensor W and ShiftMatrix X.
+    """
+
+    # preallocate result
+    m, n = W.shape[2], X.shape[1]
+    result = np.zeros((m, n))
+
+    # iterate over lags
+    for w, t in zip(W, shifts):
+        result += np.dot(w.T, X.shift(-t))
+
+    return result
+
+
+
+    
+
 
 
 def _shift(X, l):
@@ -213,3 +271,45 @@ def _shift(X, l):
         return np.pad(X, ((0, 0), (l, 0)), mode='constant')[:, :-l]
     else:
         return X
+
+
+def seq_nmf_data(N, T, L, K):
+    """Creates synthetic dataset for conv NMF
+    Args
+    ----
+    N : number of neurons
+    T : number of timepoints
+    L : max sequence length
+    K : number of factors / rank
+    Returns
+    -------
+    data : N x T matrix
+    """
+
+    # low-rank data
+    W, H = np.random.rand(N, K), np.random.rand(K, T)
+    W[W < .5] = 0
+    H[H < .8] = 0
+    lrd = np.dot(W, H)
+
+    # add a random shift to each row
+    lags = np.random.randint(0, L, size=N)
+    data = np.array([np.roll(row, l, axis=-1) for row, l in zip(lrd, lags)])
+    # data = lrd
+
+    return data, W, H
+
+
+if (__name__ == '__main__'):
+    data, W, H = seq_nmf_data(100, 300, 10, 2)
+
+    losses = []
+
+    for k in range(1, 5):
+        model = ConvNMF(k, 15).fit(data, alg='mult')
+        plt.plot(model.loss_hist)
+        losses.append(model.loss_hist[-1])
+
+    plt.figure()
+    plt.plot(losses)
+    plt.show()
