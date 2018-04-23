@@ -51,7 +51,7 @@ from scipy.signal import convolve2d
 EPSILON = np.finfo(np.float32).eps
 
 def seq_nmf(X, K=10, L=100, lam=0.001, W_init=None, H_init=None, show_plot=False,
-            maxiter=100, tol=-np.inf, shift=True, lamL1W=0, lamL1H=0, 
+            maxiter=100, tol=-np.inf, shift=False, lamL1W=0, lamL1H=0, 
             W_fixed=False, sort_factors=True, lam_orthoH=0, lam_orthoW=0,
             useWupdate=True):
     """
@@ -368,7 +368,7 @@ def _shift_factors(W, H):
         if (np.sum(temp) > EPSILON):
             ind = np.linspace(1, len(temp), num=len(temp), endpoint=True)
             ind = np.arange(0, L)
-            cmass = int(np.floor(temp.dot(ind) / np.sum(temp)))
+            cmass = int(np.floor(temp.dot(ind) / np.sum(temp)))+1
 
             Wpad[:,k,:] = np.roll(Wpad[:,k,:], [0, center-cmass])
             H[k,:] = np.roll(H[k,:], [0, cmass-center])
