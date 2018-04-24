@@ -4,7 +4,9 @@ A Python implementation of seqNMF.
 Written by Alex Williams and Anthony Degleris.
 """
 import numpy as np
+import numpy.linalg as la
 import matplotlib.pyplot as plt
+from tqdm import trange
 
 EPSILON = np.finfo(np.float32).eps
 
@@ -46,7 +48,7 @@ class ShiftMatrix(object):
 class ConvNMF(object):
 
     def __init__(self, n_components, maxlag, tol=1e-5, n_iter_max=100,
-                 l1_W=0.0, l1_H=0.0):
+                 l1_W=0.0001, l1_H=0.0):
         """
         l1_W (float) : strength of sparsity penalty on W
         l1_H (float) : strength of sparsity penalty on H
@@ -64,23 +66,26 @@ class ConvNMF(object):
         self.loss_hist = None
 
 
-    def fit(self, data, alg='bcd'):
+    def fit(self, data, alg='mult'):
         # Check input
         if (data < 0).any():
             raise ValueError('Negative values in data to fit')
 
+        mag = np.amax(data)
         data = ShiftMatrix(data, self.maxlag)
         m, n = data.shape
 
         # initialize W and H
-        self.W = np.random.rand(self.maxlag*2 + 1, m, self.n_components)
-        self.H = ShiftMatrix(np.random.rand(self.n_components, n), self.maxlag)
+        self.W = mag * np.random.rand(self.maxlag*2 + 1, m, self.n_components)
+        self.H = ShiftMatrix(mag * np.random.rand(self.n_components, n), self.maxlag)
 
 
         # optimize
         if (alg == 'bcd'):
             self._fit_bcd(data, step_type='backtrack')
         elif (alg == 'mult'):
+            self._fit_mult(data)
+        elif (alg == 'mult_bcd'):
             self._fit_bcd(data, step_type='mult')
 
         return self
@@ -95,17 +100,19 @@ class ConvNMF(object):
         loss_1, grad_W = self._compute_gW(data)
         self.loss_hist = [loss_1]
 
-        for itr in range(self.n_iter_max):
+        for itr in trange(self.n_iter_max):
             # update W
-            step_W = self._scale_gW(grad_W, step_type)
-            self.W = np.maximum(self.W - np.multiply(step_W, grad_W), 0)
+            step_W = self._scale_gW(data, grad_W, step_type)
+            new_W = np.maximum(self.W - np.multiply(step_W, grad_W), 0)
+            self.W = _soft_thresh(new_W, self.l1_W)
 
             # compute gradient of H
             _, grad_H = self._compute_gH(data)
 
-            # update W
-            step_H = self._scale_gH(grad_H, step_type)
-            self.H.assign(np.maximum(self.H.shift(0) - np.multiply(step_H, grad_H), 0))
+            # update H
+            step_H = self._scale_gH(data, grad_H, step_type)
+            new_H = np.maximum(self.H.shift(0) - np.multiply(step_H, grad_H), 0)
+            self.H.assign(_soft_thresh(new_H, self.l1_H))
 
             # compute gradient of W
             loss_2, grad_W = self._compute_gW(data)
@@ -117,6 +124,32 @@ class ConvNMF(object):
                 break
             else:
                 loss_1 = loss_2
+
+
+    def _fit_mult(self, data):
+        m, n = data.shape
+        converged, itr = False, 0
+
+        # initial loss
+        self.loss_hist = [self._compute_loss(data)]
+
+        for itr in trange(self.n_iter_max):
+            # update W
+            mult_W = self._compute_mult_W(data)
+            self.W = np.multiply(self.W, mult_W)
+            self.loss_hist += [self._compute_loss(data)]
+
+            # update h
+            mult_H = self._compute_mult_H(data)
+            self.H.assign(np.multiply(self.H.shift(0), mult_H))
+            self.loss_hist += [self._compute_loss(data)]
+
+            # check convergence
+            loss_1, loss_2 = self.loss_hist[-2:]
+            if (np.abs(loss_1 - loss_2) < self.tol):
+                converged = True
+                break
+
 
 
     def predict(self):
@@ -142,7 +175,7 @@ class ConvNMF(object):
         Root Mean Squared Error
         """
         resid = (self.predict() - data.shift(0)).ravel()
-        return np.sqrt(np.mean(np.multiply(resid, resid)))  # TODO: multiply or dot
+        return np.sqrt(np.mean(np.dot(resid, resid)))
 
 
     def _compute_gW(self, data):
@@ -186,9 +219,9 @@ class ConvNMF(object):
         return loss, Hgrad
 
 
-    def _scale_gW(self, grad_W, step_type):
+    def _scale_gW(self, data, grad_W, step_type):
         if (step_type == 'backtrack'):
-            step_W = 0.00001
+            step_W = self._backtrack(data, grad_W, 0)
 
         elif (step_type == 'mult'):
             # preallocate
@@ -205,9 +238,9 @@ class ConvNMF(object):
         return step_W
 
 
-    def _scale_gH(self, grad_H, step_type):
+    def _scale_gH(self, data, grad_H, step_type):
         if (step_type == 'backtrack'):
-            step_H = 0.00001
+            step_H = self._backtrack(data, 0, grad_H)
 
         elif (step_type == 'mult'):
             estimate = ShiftMatrix(self.predict(), self.maxlag)
@@ -218,6 +251,67 @@ class ConvNMF(object):
             raise ValueError('Invalid BCD step type.')
 
         return step_H
+
+
+    def _backtrack(self, data, grad_W, grad_H, beta=0.8, alpha=10**(-8), max_iters=500):
+        """
+        Backtracking line search to find a step length.
+        """
+        W, H = self.W, self.H.shift(0)
+        loss = self._compute_loss(data)
+        grad_mag = la.norm(grad_W)**2 + la.norm(grad_H)**2
+        t = 1.0
+
+        # first check
+        self.H.assign(H - t*grad_H)
+        self.W = W - t*grad_W
+
+        iters = 1
+
+        # backtrack
+        while (self._compute_loss(data) > loss - alpha * t * grad_mag
+               and iters < max_iters):
+            t = beta * t
+            self.H.assign(np.maximum(H - t*grad_H, 0))
+            self.W = np.maximum(W - t*grad_W, 0)
+            iters += 1
+
+        # if (iters == max_iters):
+        #     print('Backtracking did not converge.')
+
+        # reset W, H
+        self.H.assign(H)
+        self.W = W
+
+        return t
+
+
+
+    def _compute_mult_W(self, data):
+        # preallocate
+        mult_W = np.zeros(self.W.shape)
+
+        H = self.H
+        estimate = self.predict()
+
+        # TODO: broadcast
+        for l, t in enumerate(self._shifts):
+            num = np.dot(data.shift(0), H.shift(t).T)
+            denom = np.dot(estimate, H.shift(t).T)
+            mult_W[l] = np.divide(num, denom + EPSILON)
+
+        return mult_W
+
+
+    def _compute_mult_H(self, data):
+        W = self.W
+        estimate = ShiftMatrix(self.predict(), self.maxlag)
+
+        num = _tensor_transconv(W, data, self._shifts)
+        denom = _tensor_transconv(W, estimate, self._shifts)
+       
+        return np.divide(num, denom + EPSILON)
+
 
     # TODO: compute the lipschitz constant for optimal learning rate
     # TODO: backtracking line search
@@ -256,11 +350,6 @@ def _tensor_transconv(W, X, shifts):
     return result
 
 
-
-    
-
-
-
 def _shift(X, l):
     """
     Shifts matrix X along second axis and zero pads
@@ -271,6 +360,16 @@ def _shift(X, l):
         return np.pad(X, ((0, 0), (l, 0)), mode='constant')[:, :-l]
     else:
         return X
+
+
+def _soft_thresh(X, l):
+    """
+    Soft thresholding function for sparsity.
+    """
+    return np.maximum(X-l, 0) - np.maximum(-X-l, 0)
+
+
+
 
 
 def seq_nmf_data(N, T, L, K):
@@ -301,15 +400,26 @@ def seq_nmf_data(N, T, L, K):
 
 
 if (__name__ == '__main__'):
-    data, W, H = seq_nmf_data(100, 300, 10, 2)
+    data, W, H = seq_nmf_data(100, 300, 5, 2)
 
     losses = []
 
-    for k in range(1, 5):
+    K = 4
+    for k in range(1, K+1):
         model = ConvNMF(k, 15).fit(data, alg='mult')
-        plt.plot(model.loss_hist)
+        plt.plot(model.loss_hist[1:])
         losses.append(model.loss_hist[-1])
 
     plt.figure()
-    plt.plot(losses)
+    plt.plot(range(1,K+1), losses)
+    plt.show()
+
+
+    plt.figure()
+    plt.imshow(model.predict())
+    plt.title('Predicted')
+
+    plt.figure()
+    plt.imshow(data)
+
     plt.show()
