@@ -76,8 +76,8 @@ class ConvNMF(object):
         m, n = data.shape
 
         # initialize W and H
-        self.W = mag * np.random.rand(self.maxlag*2 + 1, m, self.n_components)
-        self.H = ShiftMatrix(mag * np.random.rand(self.n_components, n), self.maxlag)
+        self.W = mag * np.abs(np.random.rand(self.maxlag*2 + 1, m, self.n_components))
+        self.H = ShiftMatrix(mag * np.abs(np.random.rand(self.n_components, n)), self.maxlag)
 
 
         # optimize
@@ -253,11 +253,11 @@ class ConvNMF(object):
         return step_H
 
 
-    def _backtrack(self, data, grad_W, grad_H, beta=0.8, alpha=10**(-8), max_iters=500):
+    def _backtrack(self, data, grad_W, grad_H, beta=0.8, alpha=0.00001, max_iters=500):
         """
         Backtracking line search to find a step length.
         """
-        W, H = self.W, self.H.shift(0)
+        W, H = self.W.copy(), self.H.shift(0).copy()
         loss = self._compute_loss(data)
         grad_mag = la.norm(grad_W)**2 + la.norm(grad_H)**2
         t = 1.0
@@ -276,8 +276,8 @@ class ConvNMF(object):
             self.W = np.maximum(W - t*grad_W, 0)
             iters += 1
 
-        # if (iters == max_iters):
-        #     print('Backtracking did not converge.')
+        #if (iters == max_iters):
+        #    print('Backtracking did not converge.')
 
         # reset W, H
         self.H.assign(H)
@@ -387,7 +387,7 @@ def seq_nmf_data(N, T, L, K):
 
     # low-rank data
     W, H = np.random.rand(N, K), np.random.rand(K, T)
-    W[W < .5] = 0
+    W[W < .8] = 0
     H[H < .8] = 0
     lrd = np.dot(W, H)
 
@@ -400,13 +400,13 @@ def seq_nmf_data(N, T, L, K):
 
 
 if (__name__ == '__main__'):
-    data, W, H = seq_nmf_data(100, 300, 5, 2)
+    data, W, H = seq_nmf_data(100, 300, 10, 2)
 
     losses = []
 
-    K = 4
+    K = 3
     for k in range(1, K+1):
-        model = ConvNMF(k, 15).fit(data, alg='mult')
+        model = ConvNMF(k, 10).fit(data, alg='bcd')
         plt.plot(model.loss_hist[1:])
         losses.append(model.loss_hist[-1])
 
