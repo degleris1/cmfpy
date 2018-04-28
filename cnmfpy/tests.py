@@ -2,11 +2,12 @@ import numpy as np
 import numpy.linalg as la
 from seqnmf import seq_nmf
 from seqnmf import _reconstruct
+from cnmf import CNMF
 import matplotlib.pyplot as plt
 #from munkres import Munkres
 
 
-def seq_nmf_data(N, T, L, K, sparsity=0.75):
+def seq_nmf_data(N, T, L, K, sparsity=0.8):
     """Creates synthetic dataset for conv NMF
 
     Args
@@ -79,5 +80,29 @@ def test_seq_nmf(N=100, T=120, L=10, K=5):
     plt.ylabel('cost')
     plt.show()
 
-if (__name__ == 'main'):
-    test_seq_nmf()
+
+
+if (__name__ == '__main__'):
+    data, W, H = seq_nmf_data(100, 300, 10, 2)
+
+    losses = []
+
+    K = 3
+    for k in range(1, K+1):
+        model = CNMF(k, 10).fit(data, alg='mult')
+        plt.plot(model.loss_hist[1:])
+        losses.append(model.loss_hist[-1])
+
+    plt.figure()
+    plt.plot(range(1,K+1), losses)
+    plt.show()
+
+
+    plt.figure()
+    plt.imshow(model.predict())
+    plt.title('Predicted')
+
+    plt.figure()
+    plt.imshow(data)
+
+    plt.show()
