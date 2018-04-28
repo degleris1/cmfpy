@@ -263,8 +263,8 @@ class ConvNMF(object):
         t = 1.0
 
         # first check
-        self.H.assign(H - t*grad_H)
-        self.W = W - t*grad_W
+        self.H.assign(np.maximum(H - t*grad_H, 0))
+        self.W = np.maximum(W - t*grad_W, 0)
 
         iters = 1
 
