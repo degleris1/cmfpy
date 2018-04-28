@@ -45,7 +45,7 @@ class ShiftMatrix(object):
 
 
 
-class ConvNMF(object):
+class CNMF(object):
 
     def __init__(self, n_components, maxlag, tol=1e-5, n_iter_max=100,
                  l1_W=0.0001, l1_H=0.0):
@@ -406,7 +406,7 @@ if (__name__ == '__main__'):
 
     K = 3
     for k in range(1, K+1):
-        model = ConvNMF(k, 10).fit(data, alg='bcd')
+        model = CNMF(k, 10).fit(data, alg='bcd')
         plt.plot(model.loss_hist[1:])
         losses.append(model.loss_hist[-1])
 
