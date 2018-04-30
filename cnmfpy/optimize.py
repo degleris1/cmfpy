@@ -1,5 +1,7 @@
 import numpy as np
 
+
+from numpy.linalg import norm
 from conv import ShiftMatrix, tensor_conv, tensor_transconv
 
 
@@ -12,7 +14,7 @@ def compute_gH(data, W, H, shifts):
 
     # compute residual and loss
     resid = est - data.shift(0)
-    loss = rms(resid)
+    loss = norm(resid)
 
     # wrap residual in ShiftMatrix
     maxlag = int((len(shifts) - 1) / 2)
@@ -33,7 +35,7 @@ def compute_gW(data, W, H, shifts):
 
     # compute residual and loss
     resid = est - data.shift(0)
-    loss = rms(resid)
+    loss = norm(resid)
 
     # TODO: replace with broadcasting
     Wgrad = np.empty(W.shape)
@@ -50,17 +52,21 @@ def soft_thresh(X, l):
     return np.maximum(X-l, 0) - np.maximum(-X-l, 0)
 
 
-def rms(X):
-    """
-    Compute root mean square error.
-    """
-    X_rav = np.ravel(X)
-    return np.sqrt(np.mean(np.dot(X_rav, X_rav)))
-
-
 def compute_loss(data, W, H, shifts):
     """
     Compute the loss of a CNMF factorization.
     """
     resid = tensor_conv(W, H, shifts) - data.shift(0)
-    return rms(resid)
+    return norm(resid)
+
+
+
+
+
+def _rms(X):
+    # DEPRECATED
+    """
+    Compute root mean square error.
+    """
+    return norm(X) / np.sqrt(np.size(X))
+    #return np.sqrt(np.dot(X_rav, X_rav)) / np.sqrt(X.size)

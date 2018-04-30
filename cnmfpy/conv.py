@@ -1,6 +1,5 @@
 import numpy as np
 
-
 # TODO: subclass np.ndarray?
 class ShiftMatrix(object):
     """

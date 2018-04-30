@@ -3,6 +3,7 @@ from tqdm import trange
 
 from conv import ShiftMatrix, tensor_transconv
 from optimize import soft_thresh, compute_loss
+from regularize import compute_scfo_gW, compute_scfo_gH
 
 
 EPSILON = np.finfo(np.float32).eps
@@ -44,11 +45,13 @@ def _compute_mult_W(data, model):
     mult_W = np.zeros(model.W.shape)
 
     est = model.predict()
+    reg_gW = model.l2_scfo * compute_scfo_gW(data, model.W, model.H, 
+                                            model._shifts, model._kernel)
 
     # TODO: broadcast
     for l, t in enumerate(model._shifts):
         num = np.dot(data.shift(0), model.H.shift(t).T)
-        denom = np.dot(est, model.H.shift(t).T)
+        denom = np.dot(est, model.H.shift(t).T) + reg_gW[l]
         mult_W[l] = np.divide(num, denom + EPSILON)
 
     return mult_W
@@ -57,6 +60,8 @@ def _compute_mult_W(data, model):
 def _compute_mult_H(data, model):
 
     est = ShiftMatrix(model.predict(), model.maxlag)
+    reg_gH = model.l2_scfo * compute_scfo_gH(data, model.W, model.H,
+                                            model._shifts, model._kernel)
 
     num = tensor_transconv(model.W, data, model._shifts)
     denom = tensor_transconv(model.W, est, model._shifts)

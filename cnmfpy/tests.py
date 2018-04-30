@@ -2,7 +2,12 @@ import numpy as np
 import numpy.linalg as la
 from seqnmf import seq_nmf
 from seqnmf import _reconstruct
+
+
 from cnmf import CNMF
+import regularize as reg
+from conv import ShiftMatrix
+
 import matplotlib.pyplot as plt
 #from munkres import Munkres
 
@@ -87,16 +92,14 @@ if (__name__ == '__main__'):
 
     losses = []
 
-    K = 3
+    K = 2
     for k in range(1, K+1):
-        model = CNMF(k, 10).fit(data, alg='mult')
+        model = CNMF(k, 10).fit(data, alg='bcd')
         plt.plot(model.loss_hist[1:])
         losses.append(model.loss_hist[-1])
 
     plt.figure()
     plt.plot(range(1,K+1), losses)
-    plt.show()
-
 
     plt.figure()
     plt.imshow(model.predict())

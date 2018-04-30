@@ -4,6 +4,7 @@ from tqdm import trange
 
 from conv import ShiftMatrix
 from optimize import compute_gW, compute_gH, soft_thresh, compute_loss
+from regularize import compute_scfo_gW, compute_scfo_gH
 
 
 def fit_bcd(data, model):
@@ -18,6 +19,8 @@ def fit_bcd(data, model):
         
         # compute gradient and step size of W
         loss_1, grad_W = compute_gW(data, model.W, model.H, shifts)
+        grad_W += model.l2_scfo * compute_scfo_gW(data, model.W, model.H, 
+                                                model._shifts, model._kernel)
         step_W = _scale_gW(data, grad_W, model)
 
         # update W
@@ -26,6 +29,8 @@ def fit_bcd(data, model):
 
         # compute gradient and step size of H
         loss_2, grad_H = compute_gH(data, model.W, model.H, shifts)
+        grad_H += model.l2_scfo * compute_scfo_gH(data, model.W, model.H,
+                                                model._shifts, model._kernel)
         step_H = _scale_gH(data, grad_H, model)
 
         # update H
@@ -76,6 +81,8 @@ def _backtrack(data, grad_W, grad_H, model, beta=0.8, alpha=0.00001,
     t = 1.0
     new_H = ShiftMatrix(np.maximum(model.H.shift(0) - t*grad_H, 0), model.maxlag)
     new_W = np.maximum(model.W - t*grad_W, 0)
+
+    # TODO: add regularizer to loss?
     new_loss = compute_loss(data, new_W, new_H, shifts)
 
     iters = 0
