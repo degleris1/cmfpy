@@ -2,7 +2,7 @@ import numpy as np
 
 
 from numpy.linalg import norm
-from conv import ShiftMatrix, tensor_conv, tensor_transconv
+from cnmfpy.conv import ShiftMatrix, tensor_conv, tensor_transconv
 
 
 def compute_gH(data, W, H, shifts):

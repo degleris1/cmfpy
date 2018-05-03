@@ -1,9 +1,9 @@
 import numpy as np 
 from tqdm import trange
 
-from conv import ShiftMatrix, tensor_transconv
-from optimize import soft_thresh, compute_loss
-from regularize import compute_scfo_gW, compute_scfo_gH
+from cnmfpy.conv import ShiftMatrix, tensor_transconv
+from cnmfpy.optimize import soft_thresh, compute_loss
+from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH
 
 
 EPSILON = np.finfo(np.float32).eps

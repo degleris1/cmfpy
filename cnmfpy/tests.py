@@ -1,8 +1,5 @@
 import numpy as np
 import numpy.linalg as la
-from seqnmf import seq_nmf
-from seqnmf import _reconstruct
-
 
 from cnmf import CNMF
 import regularize as reg

@@ -8,11 +8,10 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 from tqdm import trange
 
-from conv import ShiftMatrix, tensor_conv, tensor_transconv
-from optimize import compute_gH, compute_gW
-from regularize import compute_smooth_kernel
-from bcd import fit_bcd
-from mult import fit_mult
+from cnmfpy.conv import ShiftMatrix, tensor_conv, tensor_transconv
+from cnmfpy.optimize import compute_gH, compute_gW
+from cnmfpy.regularize import compute_smooth_kernel
+from cnmfpy.algs import fit_bcd, fit_mult
 
 
 class CNMF(object):

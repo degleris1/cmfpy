@@ -2,7 +2,7 @@ import numpy as np
 
 from numpy.linalg import norm
 from scipy.signal import convolve2d
-from conv import ShiftMatrix, tensor_transconv
+from cnmfpy.conv import ShiftMatrix, tensor_transconv
 
 def compute_scfo_reg(data, W, H, shifts, kernel):
     # smooth H
