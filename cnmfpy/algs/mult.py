@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import trange
 
 from cnmfpy.conv import ShiftMatrix, tensor_transconv
-from cnmfpy.optimize import soft_thresh, compute_loss
+from cnmfpy.optimize import compute_loss
 from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH
 
 
@@ -23,14 +23,14 @@ def fit_mult(data, model):
         mult_W = _compute_mult_W(data, model)
 
         # update W
-        model.W = soft_thresh(np.multiply(model.W, mult_W), model.l1_W)
+        model.W = np.multiply(model.W, mult_W)
         model.loss_hist += [compute_loss(data, model.W, model.H, shifts)]
 
         # compute multiplier for H
         mult_H = _compute_mult_H(data, model)
 
         # update H
-        model.H.assign(soft_thresh(np.multiply(model.H.shift(0), mult_H), model.l1_H))
+        model.H.assign(np.multiply(model.H.shift(0), mult_H))
         model.loss_hist += [compute_loss(data, model.W, model.H, shifts)]
 
         # check convergence
@@ -51,7 +51,7 @@ def _compute_mult_W(data, model):
     # TODO: broadcast
     for l, t in enumerate(model._shifts):
         num = np.dot(data.shift(0), model.H.shift(t).T)
-        denom = np.dot(est, model.H.shift(t).T) + reg_gW[l]
+        denom = np.dot(est, model.H.shift(t).T) + reg_gW[l] + model.l1_W
         mult_W[l] = np.divide(num, denom + EPSILON)
 
     return mult_W
@@ -64,6 +64,6 @@ def _compute_mult_H(data, model):
                                             model._shifts, model._kernel)
 
     num = tensor_transconv(model.W, data, model._shifts)
-    denom = tensor_transconv(model.W, est, model._shifts)
+    denom = tensor_transconv(model.W, est, model._shifts) + reg_gH + model.l1_H
    
     return np.divide(num, denom + EPSILON)
