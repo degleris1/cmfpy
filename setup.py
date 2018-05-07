@@ -7,6 +7,7 @@ import cnmfpy
 
 config = {
     'name': 'cnmfpy',
+    'packages': find_packages(exclude=['doc']),
     'description': 'Tools for Convolutive Non-Negative Matrix Factorization',
     'author': 'Anthony Degleris, Alex Williams',
     'author_email': 'degleris@stanford.edu',

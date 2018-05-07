@@ -1,9 +1,9 @@
 import numpy as np
 import numpy.linalg as la
 
-from cnmf import CNMF
-import regularize as reg
-from conv import ShiftMatrix
+from cnmfpy.cnmf import CNMF
+import cnmfpy.regularize as reg
+from cnmfpy.conv import ShiftMatrix
 
 import matplotlib.pyplot as plt
 #from munkres import Munkres

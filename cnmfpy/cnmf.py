@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 
 from cnmfpy.conv import ShiftMatrix, tensor_conv, tensor_transconv
-from cnmfpy.optimize import compute_gH, compute_gW
+from cnmfpy.optimize import compute_gH, compute_gW, compute_loadings
 from cnmfpy.regularize import compute_smooth_kernel
 from cnmfpy.algs import fit_bcd, fit_mult
 
@@ -62,7 +62,13 @@ class CNMF(object):
         else:
             raise ValueError('No such algorithm found.')
 
-        return self
+        # compute explanatory power of each factor
+        loadings = compute_loadings(data, self.W, self.H, self._shifts)
+
+        # sort factors by power
+        ind = np.argsort(loadings)
+        self.W = self.W[:, :, ind]
+        self.H.assign(self.H.shift(0)[ind, :])
 
 
     def predict(self):

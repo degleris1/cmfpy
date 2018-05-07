@@ -4,11 +4,10 @@ from tqdm import trange
 
 from cnmfpy.conv import ShiftMatrix
 from cnmfpy.optimize import compute_gW, compute_gH, soft_thresh, compute_loss
-from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH
+from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH, compute_scfo_reg
 
 
 def fit_bcd(data, model):
-
     m, n = data.shape
     shifts = model._shifts
 
@@ -69,22 +68,19 @@ def _scale_gH(data, grad_H, model, step_type='backtrack'):
 
 def _backtrack(data, grad_W, grad_H, model, beta=0.8, alpha=0.00001, 
                 max_iters=500):
+    """Backtracking line search to find a step length.
     """
-    Backtracking line search to find a step length.
-    """
-    # compute initial loss and gradient magnitude
     shifts = model._shifts
+
+    # compute initial loss and gradient magnitude
     past_loss = compute_loss(data, model.W, model.H, shifts)
+    if (model.l2_scfo != 0):  # regularizer
+        past_loss += model.l2_scfo * compute_scfo_reg(data, model.W, model.H, shifts, model._kernel)
+    
     grad_mag = la.norm(grad_W)**2 + la.norm(grad_H)**2
 
-    # first check
+    new_loss = past_loss
     t = 1.0
-    new_H = ShiftMatrix(np.maximum(model.H.shift(0) - t*grad_H, 0), model.maxlag)
-    new_W = np.maximum(model.W - t*grad_W, 0)
-
-    # TODO: add regularizer to loss?
-    new_loss = compute_loss(data, new_W, new_H, shifts)
-
     iters = 0
     # backtracking line search
     while ((new_loss > past_loss - alpha*t*grad_mag) and (iters < max_iters)):
@@ -93,6 +89,8 @@ def _backtrack(data, grad_W, grad_H, model, beta=0.8, alpha=0.00001,
         new_H.assign(np.maximum(model.H.shift(0) - t*grad_H, 0))
         new_W = np.maximum(model.W - t*grad_W, 0)
         new_loss = compute_loss(data, new_W, new_H, shifts)
+        if (model.l2_scfo != 0):  # regularizer
+            new_loss += model.l2_scfo * compute_scfo_reg(data, new_W, new_H, shifts, model._kernel)
 
         iters += 1
 

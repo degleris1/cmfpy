@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import trange
 
 from cnmfpy.conv import ShiftMatrix, tensor_transconv
-from cnmfpy.optimize import compute_loss
+from cnmfpy.optimize import compute_loss, renormalize, shift_factors
 from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH
 
 
@@ -13,12 +13,15 @@ def fit_mult(data, model):
     m, n = data.shape
     shifts = model._shifts
 
-
     # initial loss
     model.loss_hist = [compute_loss(data, model.W, model.H, shifts)]
 
     converged, itr = False, 0
     for itr in trange(model.n_iter_max):
+        # shift factors
+        if ((itr % 5 == 0) and (model.n_iter_max - itr > 15)):
+            model.W, model.H = shift_factors(model.W, model.H, shifts)
+
         # compute multiplier for W
         mult_W = _compute_mult_W(data, model)
 
@@ -32,6 +35,9 @@ def fit_mult(data, model):
         # update H
         model.H.assign(np.multiply(model.H.shift(0), mult_H))
         model.loss_hist += [compute_loss(data, model.W, model.H, shifts)]
+
+        # renormalize H
+        model.W, model.H = renormalize(model.W, model.H)
 
         # check convergence
         prev_loss, new_loss = model.loss_hist[-2:]

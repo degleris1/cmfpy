@@ -22,6 +22,7 @@ class ShiftMatrix(object):
         self.X = np.pad(X, ((0, 0), (L, L)), mode='constant')
 
     def shift(self, l):
+        """Shifts the columns left, padding with zeros on the right."""
         if np.abs(l) > self.L:
             raise ValueError('requested too large of a shift.')
 
