@@ -82,6 +82,7 @@ def _backtrack(data, grad_W, grad_H, model, beta=0.8, alpha=0.00001,
     new_loss = past_loss
     t = 1.0
     iters = 0
+    new_H = ShiftMatrix(model.H.shift(0), model.maxlag)
     # backtracking line search
     while ((new_loss > past_loss - alpha*t*grad_mag) and (iters < max_iters)):
         t = beta * t
