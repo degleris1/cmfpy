@@ -17,7 +17,7 @@ from cnmfpy.algs import fit_bcd, fit_mult
 class CNMF(object):
 
     def __init__(self, n_components, maxlag, tol=1e-5, n_iter_max=100,
-                 l2_scfo=1e-6, l1_W=0.0, l1_H=0.0):
+                 l2_scfo=0, l1_W=0.0, l1_H=0.0):
         """
         Convolutive Non-Negative Matrix Factorization (CNMF)
         
@@ -97,8 +97,10 @@ class CNMF(object):
         self.H = ShiftMatrix(mag * np.abs(np.random.rand(self.n_components, n)), self.maxlag)
 
         # optimize
-        if (alg == 'bcd'):
-            fit_bcd(data, self)
+        if (alg == 'bcd_backtrack'):
+            fit_bcd(data, self, step_type='backtrack')
+        elif (alg == 'bcd_const'):
+            fit_bcd(data, self, step_type='constant')
         elif (alg == 'mult'):
             fit_mult(data, self)
         else:

@@ -91,7 +91,7 @@ if (__name__ == '__main__'):
 
     K = 2
     for k in range(1, K+1):
-        model = CNMF(k, 10).fit(data, alg='bcd')
+        model = CNMF(k, 10, tol=0, n_iter_max=1000).fit(data, alg='bcd_const')
         plt.plot(model.loss_hist[1:])
         losses.append(model.loss_hist[-1])
 

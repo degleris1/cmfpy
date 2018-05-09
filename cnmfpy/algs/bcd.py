@@ -7,7 +7,7 @@ from cnmfpy.optimize import compute_gW, compute_gH, soft_thresh, compute_loss
 from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH, compute_scfo_reg
 
 
-def fit_bcd(data, model):
+def fit_bcd(data, model, step_type='constant'):
     m, n = data.shape
     shifts = model._shifts
 
@@ -20,7 +20,7 @@ def fit_bcd(data, model):
         loss_1, grad_W = compute_gW(data, model.W, model.H, shifts)
         grad_W += model.l2_scfo * compute_scfo_gW(data, model.W, model.H, 
                                                 model._shifts, model._kernel)
-        step_W = _scale_gW(data, grad_W, model)
+        step_W = _scale_gW(data, grad_W, model, step_type)
 
         # update W
         new_W = np.maximum(model.W - np.multiply(step_W, grad_W), 0)
@@ -30,7 +30,7 @@ def fit_bcd(data, model):
         loss_2, grad_H = compute_gH(data, model.W, model.H, shifts)
         grad_H += model.l2_scfo * compute_scfo_gH(data, model.W, model.H,
                                                 model._shifts, model._kernel)
-        step_H = _scale_gH(data, grad_H, model)
+        step_H = _scale_gH(data, grad_H, model, step_type)
 
         # update H
         new_H = np.maximum(model.H.shift(0) - np.multiply(step_H, grad_H), 0)
@@ -46,9 +46,12 @@ def fit_bcd(data, model):
 
 
 
-def _scale_gW(data, grad_W, model, step_type='backtrack'):
+def _scale_gW(data, grad_W, model, step_type='constant'):
     if (step_type == 'backtrack'):
         step_W = _backtrack(data, grad_W, 0, model)
+
+    elif (step_type == 'constant'):
+        step_W = 1e-3
 
     else:
         raise ValueError('Invalid BCD step type.')
@@ -59,6 +62,9 @@ def _scale_gW(data, grad_W, model, step_type='backtrack'):
 def _scale_gH(data, grad_H, model, step_type='backtrack'):
     if (step_type == 'backtrack'):
         step_H = _backtrack(data, 0, grad_H, model)
+
+    elif (step_type == 'constant'):
+        step_H = 1e-3
 
     else:
         raise ValueError('Invalid BCD step type.')
@@ -76,7 +82,7 @@ def _backtrack(data, grad_W, grad_H, model, beta=0.8, alpha=0.00001,
     past_loss = compute_loss(data, model.W, model.H, shifts)
     if (model.l2_scfo != 0):  # regularizer
         past_loss += model.l2_scfo * compute_scfo_reg(data, model.W, model.H, shifts, model._kernel)
-    
+
     grad_mag = la.norm(grad_W)**2 + la.norm(grad_H)**2
 
     new_loss = past_loss
