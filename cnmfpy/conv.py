@@ -24,7 +24,7 @@ class ShiftMatrix(object):
     def shift(self, l):
         """Shifts the columns left, padding with zeros on the right."""
         if np.abs(l) > self.L:
-            raise ValueError('requested too large of a shift.')
+            raise ValueError('requested too large of a shift.' + str(np.abs(l)) + ' > ' + str(self.L))
 
         r = slice(self.L - l, self.L + self.shape[1] - l)
         return self.X[:, r]

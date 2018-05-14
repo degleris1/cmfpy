@@ -39,7 +39,7 @@ def compute_scfo_gH(data, W, H, shifts, kernel):
     K, T = H.shape
 
     # smooth data
-    maxlag = int((len(shifts)-1)/2)
+    maxlag = len(shifts)  #int((len(shifts)-1)/2)
     smooth_data = ShiftMatrix(_smooth(data.shift(0), kernel), maxlag)
 
     not_eye = np.ones((K, K)) - np.eye(K)
@@ -49,7 +49,7 @@ def compute_scfo_gH(data, W, H, shifts, kernel):
 
 def compute_smooth_kernel(maxlag):
     # TODO check
-    return np.ones([1, 4*maxlag+1])
+    return np.ones([1, 2*maxlag+1])
 
 
 def _smooth(X, kernel):

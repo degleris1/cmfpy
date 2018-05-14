@@ -63,7 +63,7 @@ class CNMF(object):
         self.l1_W = l1_W
         self.l1_H = l1_H
         
-        self._shifts = np.arange(maxlag*2 + 1) - maxlag
+        self._shifts = np.arange(maxlag)  #*2 + 1) #- maxlag
         self._kernel = compute_smooth_kernel(maxlag)
         self.loss_hist = None
 

@@ -20,7 +20,7 @@ def compute_gH(data, W, H, shifts):
     loss = norm(resid)
 
     # wrap residual in ShiftMatrix
-    maxlag = int((len(shifts) - 1) / 2)
+    maxlag = len(shifts)  #int((len(shifts) - 1) / 2)
     resid = ShiftMatrix(resid, maxlag)
 
     # compute grad
@@ -69,7 +69,7 @@ def compute_loadings(data, W, H, shifts):
     """
     loadings = []
     K, T = H.shape
-    maxlag = int((len(shifts) - 1) / 2)
+    maxlag = len(shifts)  #int((len(shifts) - 1) / 2)
 
     data_mag = norm(data.shift(0))
 
@@ -100,7 +100,7 @@ def renormalize(W, H):
 def shift_factors(W, H, shifts):
     """Shift factors by their center of mass."""
     L, N, K = W.shape
-    maxlag = int((len(shifts) - 1) / 2)
+    maxlag = len(shifts)  #int((len(shifts) - 1) / 2)
 
     if (L == 1):
         raise IndexError('No room to shift. Disable shifting.')
