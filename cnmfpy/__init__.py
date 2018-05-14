@@ -1,6 +1,6 @@
 from cnmfpy.cnmf import CNMF
 
-import cnmfpy.tests
+import cnmfpy.utils
 import cnmfpy.optimize
 import cnmfpy.regularize
 import cnmfpy.conv
