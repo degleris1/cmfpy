@@ -30,7 +30,7 @@ class CNMF(object):
             Number of components to fit.
         maxlag : int
             Maximum time lag in each sequence. A single sequence can lag up to
-            `maxlag` entries left or right and has length `2*maxlag+1`.
+            `maxlag` entries right of the first time point.
         tol : float, optional
             Tolerance for convergence. If the change in cost is less than the
             `tol`, the algorithm will terminate early.
@@ -63,7 +63,6 @@ class CNMF(object):
         self.l1_W = l1_W
         self.l1_H = l1_H
         
-        self._shifts = np.arange(maxlag)  #*2 + 1) #- maxlag
         self._kernel = compute_smooth_kernel(maxlag)
         self.loss_hist = None
 
@@ -93,7 +92,7 @@ class CNMF(object):
         m, n = data.shape
 
         # initialize W and H
-        self.W = mag * np.abs(np.random.rand(self.maxlag*2 + 1, m, self.n_components))
+        self.W = mag * np.abs(np.random.rand(self.maxlag, m, self.n_components))
         self.H = ShiftMatrix(mag * np.abs(np.random.rand(self.n_components, n)), self.maxlag)
 
         # optimize
@@ -107,7 +106,7 @@ class CNMF(object):
             raise ValueError('No such algorithm found.')
 
         # compute explanatory power of each factor
-        loadings = compute_loadings(data, self.W, self.H, self._shifts)
+        loadings = compute_loadings(data, self.W, self.H)
 
         # sort factors by power
         ind = np.argsort(loadings)
@@ -129,7 +128,7 @@ class CNMF(object):
         # check that W and H are fit
         self._check_is_fitted()
 
-        return tensor_conv(self.W, self.H, self._shifts)
+        return tensor_conv(self.W, self.H)
        
 
     def _check_is_fitted(self):

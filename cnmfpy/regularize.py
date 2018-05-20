@@ -4,20 +4,20 @@ from numpy.linalg import norm
 from scipy.signal import convolve2d
 from cnmfpy.conv import ShiftMatrix, tensor_transconv
 
-def compute_scfo_reg(data, W, H, shifts, kernel):
+def compute_scfo_reg(data, W, H, kernel):
     # smooth H
-    maxlag = int((len(shifts)-1)/2)
+    maxlag = W.shape[0]
     smooth_H = _smooth(H.shift(0).T, kernel)
 
     # penalize H
     pen_H = ShiftMatrix(np.dot(data.shift(0), smooth_H), maxlag)
 
     # penalize W
-    penalty = tensor_transconv(W, pen_H, shifts)
+    penalty = tensor_transconv(W, pen_H)
     return norm(penalty)
 
 
-def compute_scfo_gW(data, W, H, shifts, kernel):
+def compute_scfo_gW(data, W, H, kernel):
     K, T = H.shape
 
     # preallocate
@@ -29,23 +29,22 @@ def compute_scfo_gW(data, W, H, shifts, kernel):
     not_eye = np.ones((K, K)) - np.eye(K)
 
     # TODO: broadcast
-    for l, t in enumerate(shifts):
-        sfco_gradW[l] = data.shift(-t).dot(smooth_H).dot(not_eye)
+    for l in np.arange(W.shape[0]):
+        sfco_gradW[l] = data.shift(-l).dot(smooth_H).dot(not_eye)
 
     return sfco_gradW
 
 
-def compute_scfo_gH(data, W, H, shifts, kernel):
+def compute_scfo_gH(data, W, H, kernel):
     K, T = H.shape
 
     # smooth data
-    maxlag = len(shifts)  #int((len(shifts)-1)/2)
-    smooth_data = ShiftMatrix(_smooth(data.shift(0), kernel), maxlag)
+    smooth_data = ShiftMatrix(_smooth(data.shift(0), kernel), W.shape[0])
 
     not_eye = np.ones((K, K)) - np.eye(K)
 
     # apply transpose convolution
-    return not_eye.dot(tensor_transconv(W, smooth_data, shifts))
+    return not_eye.dot(tensor_transconv(W, smooth_data))
 
 def compute_smooth_kernel(maxlag):
     # TODO check

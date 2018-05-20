@@ -34,7 +34,7 @@ class ShiftMatrix(object):
 
 
 
-def tensor_conv(W, H, shifts):
+def tensor_conv(W, H):
     """
     Convolves a tensor W and ShiftMatrix H.
     """
@@ -45,13 +45,14 @@ def tensor_conv(W, H, shifts):
 
     # TODO: replace with broadcasting
     # iterate over lags
+    shifts = np.arange(W.shape[0])
     for w, t in zip(W, shifts):
         result += np.dot(w, H.shift(t))
 
     return result
 
 
-def tensor_transconv(W, X, shifts):
+def tensor_transconv(W, X):
     """
     Transpose tensor convolution of tensor W and ShiftMatrix X.
     """
@@ -62,6 +63,7 @@ def tensor_transconv(W, X, shifts):
 
     # TODO: replace with broadcasting
     # iterate over lags
+    shifts = np.arange(W.shape[0])
     for w, t in zip(W, shifts):
         result += np.dot(w.T, X.shift(-t))
 

@@ -9,7 +9,6 @@ from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH, compute_scfo_reg
 
 def fit_bcd(data, model, step_type='constant'):
     m, n = data.shape
-    shifts = model._shifts
 
     converged, itr = False, 0
     model.loss_hist = []
@@ -17,9 +16,9 @@ def fit_bcd(data, model, step_type='constant'):
     for itr in trange(model.n_iter_max):
         
         # compute gradient and step size of W
-        loss_1, grad_W = compute_gW(data, model.W, model.H, shifts)
+        loss_1, grad_W = compute_gW(data, model.W, model.H)
         grad_W += model.l2_scfo * compute_scfo_gW(data, model.W, model.H, 
-                                                model._shifts, model._kernel)
+                                                model._kernel)
         step_W = _scale_gW(data, grad_W, model, step_type)
 
         # update W
@@ -27,9 +26,9 @@ def fit_bcd(data, model, step_type='constant'):
         model.W = soft_thresh(new_W, model.l1_W)
 
         # compute gradient and step size of H
-        loss_2, grad_H = compute_gH(data, model.W, model.H, shifts)
+        loss_2, grad_H = compute_gH(data, model.W, model.H)
         grad_H += model.l2_scfo * compute_scfo_gH(data, model.W, model.H,
-                                                model._shifts, model._kernel)
+                                                model._kernel)
         step_H = _scale_gH(data, grad_H, model, step_type)
 
         # update H
@@ -76,12 +75,10 @@ def _backtrack(data, grad_W, grad_H, model, beta=0.8, alpha=0.00001,
                 max_iters=500):
     """Backtracking line search to find a step length.
     """
-    shifts = model._shifts
-
     # compute initial loss and gradient magnitude
-    past_loss = compute_loss(data, model.W, model.H, shifts)
+    past_loss = compute_loss(data, model.W, model.H)
     if (model.l2_scfo != 0):  # regularizer
-        past_loss += model.l2_scfo * compute_scfo_reg(data, model.W, model.H, shifts, model._kernel)
+        past_loss += model.l2_scfo * compute_scfo_reg(data, model.W, model.H, model._kernel)
 
     grad_mag = la.norm(grad_W)**2 + la.norm(grad_H)**2
 
@@ -95,9 +92,9 @@ def _backtrack(data, grad_W, grad_H, model, beta=0.8, alpha=0.00001,
 
         new_H.assign(np.maximum(model.H.shift(0) - t*grad_H, 0))
         new_W = np.maximum(model.W - t*grad_W, 0)
-        new_loss = compute_loss(data, new_W, new_H, shifts)
+        new_loss = compute_loss(data, new_W, new_H)
         if (model.l2_scfo != 0):  # regularizer
-            new_loss += model.l2_scfo * compute_scfo_reg(data, new_W, new_H, shifts, model._kernel)
+            new_loss += model.l2_scfo * compute_scfo_reg(data, new_W, new_H, model._kernel)
 
         iters += 1
 

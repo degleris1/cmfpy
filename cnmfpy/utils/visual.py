@@ -6,7 +6,18 @@ EPSILON = np.finfo(np.float32).eps
 
 def sort_neurons(W):
     """
-    Sort neurons, first by factor, then by weight.
+    Sorts neurons, first by factor, then by time lag within factor.
+    Timelags are defined as the center of mass within a particular factor.
+
+    Parameters
+    ----------
+    W : array-like, shape (n_lag, n_neurons, n_components)
+        Tensor of neural sequences produced by the CNMF model.
+
+    Returns
+    -------
+    ordering : list, ints
+        Indices of the neurons sorted by factor, then by timelag within factor.
     """
     L, N, K = W.shape
 
@@ -32,7 +43,18 @@ def sort_neurons(W):
 
 def plot_H_components(H, n_components=None, figsize=(16,4), color='b'):
     """
-    Plot the components of H.
+    Plots the components of H.
+
+    Parameters
+    ----------
+    H : array-like, shape (n_components, n_time)
+        Matrix of time sequences produced by the CNMF model.
+    n_components : int, optional
+        Number of components to plot. By default, plot all the components.
+    figsize : tuple, (int, int), optional
+        Two tuple of ints. Size of the figure to plot.
+    color : string, optional
+        Color of the components. By default, plots are blue.
     """
     if (n_components == None):
         n_components = H.shape[0]
