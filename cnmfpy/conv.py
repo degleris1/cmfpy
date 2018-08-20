@@ -1,5 +1,6 @@
 import numpy as np
 
+
 # TODO: subclass np.ndarray?
 class ShiftMatrix(object):
     def __init__(self, X, L):
@@ -27,12 +28,12 @@ class ShiftMatrix(object):
 
     def shift(self, l):
         """
-        Shifts the columns left, padding with zeros on the right.
+        Shifts the columns right by `l', padding with zeros on the left.
 
         Parameters
         ----------
         l : int
-            Number of times to shift left.
+            Number of times to shift right.
 
         Returns
         -------
@@ -58,7 +59,6 @@ class ShiftMatrix(object):
         self.X[:, self.L:-self.L] = Xnew
 
 
-
 def tensor_conv(W, H):
     """
     Convolves a tensor W and ShiftMatrix H.
@@ -74,7 +74,10 @@ def tensor_conv(W, H):
     -------
     X : ndarray, shape (n_neurons, n_time)
         Tensor convolution of W and H.
-    """   
+    """
+
+    """
+    DEPRECATED
     # preallocate result
     m, n = W.shape[1], H.shape[1]
     result = np.zeros((m, n))
@@ -86,6 +89,10 @@ def tensor_conv(W, H):
         result += np.dot(w, H.shift(t))
 
     return result
+    """
+    L = W.shape[0]
+    H_stacked = np.vstack([H.shift(l) for l in range(L)])
+    return np.dot(np.hstack(W), H_stacked)
 
 
 def tensor_transconv(W, X):
@@ -96,15 +103,18 @@ def tensor_transconv(W, X):
     ----------
     W : ndarray, shape (n_lag, n_neurons, n_components)
         Tensor of neural sequences.
-    H : ShiftMatrix, shape (n_components, n_time)
+    X : ShiftMatrix, shape (n_components, n_time)
         ShiftMatrix of time componenents.
 
     Returns
     -------
     X : ndarray, shape (n_neurons, n_time)
-        Transpose tensor convolution of W and H, i.e. the tensor convolution
+        Transpose tensor convolution of W and X, i.e. the tensor convolution
         but shifted the opposite direction.
     """
+
+    
+    # DEPRECATED?
     # preallocate result
     m, n = W.shape[2], X.shape[1]
     result = np.zeros((m, n))
@@ -116,12 +126,22 @@ def tensor_transconv(W, X):
         result += np.dot(w.T, X.shift(-t))
 
     return result
+    
 
+    """
+    L = W.shape[0]
+    X_stacked = np.vstack([X.shift(-l) for l in range(L)])
+    W_stacked = np.vstack(W)
+    return np.dot(W_stacked.T, X_stacked)
+    """
+    
 
 
 def shift_cols(X, l):
     """
     Shifts matrix X along second axis and zero pads
+
+    TODO: reduce cases
     """
     if l < 0:
         return np.pad(X, ((0, 0), (0, -l)), mode='constant')[:, -l:]

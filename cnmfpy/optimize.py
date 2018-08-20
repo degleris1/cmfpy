@@ -1,5 +1,5 @@
 import numpy as np
-
+import numba
 
 from numpy.linalg import norm
 from cnmfpy.conv import ShiftMatrix, tensor_conv, tensor_transconv

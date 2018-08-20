@@ -38,3 +38,6 @@ nosetests.xml
 # data
 data/
 .ipynb_checkpoints
+
+# Experimental features
+experiments/
