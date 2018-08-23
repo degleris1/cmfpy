@@ -106,7 +106,7 @@ class CNMF(object):
         # sort factors by power
         ind = np.argsort(loadings)
         self.W = self.W[:, :, ind]
-        self.H.assign(self.H.shift(0)[ind, :])
+        self.H.assign(self.H[ind, :])
 
         return self
 
