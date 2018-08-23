@@ -1,8 +1,8 @@
-import numpy as np 
+import numpy as np
 from tqdm import trange
 
-from cnmfpy.conv import ShiftMatrix, tensor_transconv
-from cnmfpy.optimize import compute_loss, renormalize, shift_factors
+from cnmfpy.conv import tensor_transconv
+from cnmfpy.optimize import compute_loss, renormalize
 from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH
 
 
@@ -15,7 +15,7 @@ def fit_mult(data, model):
     # initial loss
     model.loss_hist = [compute_loss(data, model.W, model.H)]
 
-    converged, itr = False, 0
+    itr = 0
     for itr in trange(model.n_iter_max):
         # shift factors
         #if ((itr % 5 == 0) and (model.n_iter_max - itr > 15)):
@@ -31,7 +31,7 @@ def fit_mult(data, model):
         num_H, denom_H = _compute_mult_H(data, model)
 
         # update H
-        model.H.assign(np.divide(np.multiply(model.H.shift(0), num_H), denom_H))
+        model.H = np.divide(np.multiply(model.H, num_H), denom_H)
         model.loss_hist += [compute_loss(data, model.W, model.H)]
 
         # renormalize H
@@ -40,7 +40,6 @@ def fit_mult(data, model):
         # check convergence
         prev_loss, new_loss = model.loss_hist[-2:]
         if (np.abs(prev_loss - new_loss) < model.tol):
-            converged = True
             break
 
 
@@ -50,8 +49,8 @@ def _compute_mult_W(data, model):
     denom = np.zeros(model.W.shape)
 
     est = model.predict()
-    reg_gW = model.l2_scfo * compute_scfo_gW(data, model.W, model.H, 
-                                            model._kernel)
+    reg_gW = model.l2_scfo * compute_scfo_gW(data, model.W, model.H,
+                                             model._kernel)
 
     # TODO: broadcast
     for l in np.arange(model.W.shape[0]):
@@ -62,11 +61,11 @@ def _compute_mult_W(data, model):
 
 
 def _compute_mult_H(data, model):
-    est = ShiftMatrix(model.predict(), model.maxlag)
+    est = model.predict()
     reg_gH = model.l2_scfo * compute_scfo_gH(data, model.W, model.H,
-                                            model._kernel)
+                                             model._kernel)
 
     num = tensor_transconv(model.W, data)
     denom = tensor_transconv(model.W, est) + reg_gH + model.l1_H
-   
+
     return num, denom+EPSILON

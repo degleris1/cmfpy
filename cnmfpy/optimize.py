@@ -24,7 +24,7 @@ def compute_gH(data, W, H):
 
     # compute grad
     Hgrad = tensor_transconv(W, resid)
-    
+
     return loss, Hgrad
 
 

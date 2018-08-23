@@ -1,143 +1,100 @@
 import numpy as np
+import numba
 
 
-# TODO: subclass np.ndarray?
-class ShiftMatrix(object):
-    def __init__(self, X, L):
-        """
-        Shift Matrix.
-        
-        Thin wrapper around a numpy ndarray to support shifting along the second
-        axis and padding with zeros.
-
-        Parameters
-        ----------
-        X : numpy, shape (n1, n2)
-            Numpy array to be wrapped.
-        L : int
-            Largest shift in either direction.
-        """
-        # behaves like the original ndarray
-        self.shape = X.shape
-        self.size = X.size
-
-        # Padded version of X
-        self.L = L
-        self.X = np.pad(X, ((0, 0), (L, L)), mode='constant')
-
-
-    def shift(self, l):
-        """
-        Shifts the columns right by `l', padding with zeros on the left.
-
-        Parameters
-        ----------
-        l : int
-            Number of times to shift right.
-
-        Returns
-        -------
-        X_shifted : ndarray
-            Returns a shifted version of the original ndarray.
-        """
-        if np.abs(l) > self.L:
-            raise ValueError('requested too large of a shift.' + str(np.abs(l)) + ' > ' + str(self.L))
-
-        r = slice(self.L - l, self.L + self.shape[1] - l)
-        return self.X[:, r]
-
-
-    def assign(self, Xnew):
-        """
-        Reassigns the numpy ndarray.
-
-        Parameters
-        ----------
-        Xnew : ndarray, shape (n1, n2)
-            A new ndarray of the same shape as before.
-        """
-        self.X[:, self.L:-self.L] = Xnew
-
-
+@numba.jit
 def tensor_conv(W, H):
     """
-    Convolves a tensor W and ShiftMatrix H.
+    Convolves a tensor W and matrix H.
 
     Parameters
     ----------
     W : ndarray, shape (n_lag, n_neurons, n_components)
         Tensor of neural sequences.
-    H : ShiftMatrix, shape (n_components, n_time)
-        ShiftMatrix of time componenents.
+    H : ndarray, shape (n_components, n_time)
+        Matrix of time componenents.
 
     Returns
     -------
     X : ndarray, shape (n_neurons, n_time)
         Tensor convolution of W and H.
     """
+    L, N, K = W.shape
+    T = H.shape[1]
 
-    """
-    DEPRECATED
-    # preallocate result
-    m, n = W.shape[1], H.shape[1]
-    result = np.zeros((m, n))
+    H_stacked = np.zeros((L*K, T))
+    for lag in range(L):
+        H_stacked[K*lag:K*(lag+1), lag:] = shift_cols(H, lag)
 
-    # TODO: replace with broadcasting
-    # iterate over lags
-    shifts = np.arange(W.shape[0])
-    for w, t in zip(W, shifts):
-        result += np.dot(w, H.shift(t))
-
-    return result
-    """
-    L = W.shape[0]
-    H_stacked = np.vstack([H.shift(l) for l in range(L)])
-    return np.dot(np.hstack(W), H_stacked)
+    return np.dot(W.reshape((N, L*K)), H_stacked)
 
 
+@numba.jit
 def tensor_transconv(W, X):
     """
-    Transpose tensor convolution of tensor W and ShiftMatrix X.
+    Transpose tensor convolution of tensor `W` and matrix `X`.
 
     Parameters
     ----------
     W : ndarray, shape (n_lag, n_neurons, n_components)
         Tensor of neural sequences.
-    X : ShiftMatrix, shape (n_components, n_time)
-        ShiftMatrix of time componenents.
+    X : ndarray, shape (n_components, n_time)
+        Matrix of time componenents.
 
     Returns
     -------
     X : ndarray, shape (n_neurons, n_time)
         Transpose tensor convolution of W and X, i.e. the tensor convolution
         but shifted the opposite direction.
+
+    Notes
+    -----
+    # TODO: Consider speed up
     """
+    L, N, K = W.shape
+    T = X.shape[1]
 
-    
-    # DEPRECATED?
-    # preallocate result
-    m, n = W.shape[2], X.shape[1]
-    result = np.zeros((m, n))
-
-    # TODO: replace with broadcasting
-    # iterate over lags
-    shifts = np.arange(W.shape[0])
-    for w, t in zip(W, shifts):
-        result += np.dot(w.T, X.shift(-t))
+    result = np.zeros((K, T))
+    for lag, w in enumerate(W):
+        result[:, :T-lag] += np.dot(w.T, shift_cols(X, -lag))
 
     return result
-    
 
+
+@numba.jit(nopython=True, cache=True)
+def shift_cols(X, lag):
     """
-    L = W.shape[0]
-    X_stacked = np.vstack([X.shift(-l) for l in range(L)])
-    W_stacked = np.vstack(W)
-    return np.dot(W_stacked.T, X_stacked)
+    Shifts the columns of a matrix `X` right by `l` lags. Drops columns that
+    are shifted beyond the dimension of the matrix.
+
+    # TODO: remove cases
     """
-    
+    if (lag <= 0):
+        return X[:, -lag:]
+    else:  # lag > 0
+        return X[:, :-lag]
 
 
-def shift_cols(X, l):
+@numba.jit
+def hunfold(W):
+    """
+    Unfold a tensor along its first mode, stacking horizontally.
+    """
+    L, N, K = W.shape
+    return np.swapaxes(W, 1, 2).reshape((K*L, N)).T
+
+
+@numba.jit
+def hunfold_trans(M):
+    """
+    Unfold a tensor along its first mode, stacking the transpose of each
+    slice horizontally.
+    """
+    L, N, K = M.shape
+    return M.reshape((L*N, K)).T
+
+
+def pad_shift_cols(X, l):
     """
     Shifts matrix X along second axis and zero pads
 
