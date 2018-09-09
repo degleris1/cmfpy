@@ -1,7 +1,7 @@
 import numpy as np
 
-from numpy.linalg import norm, shift_cols
-from cnmfpy.conv import tensor_conv, tensor_transconv
+from numpy.linalg import norm
+from cnmfpy.conv import shift_cols, tensor_conv, tensor_transconv
 
 
 EPSILON = np.finfo(np.float32).eps
@@ -39,7 +39,8 @@ def compute_gW(data, W, H):
     Wgrad = np.empty(W.shape)
 
     for l in np.arange(W.shape[0]):
-        Wgrad[l] = np.dot(resid, shift_cols(H, l).T)
+        # TODO verify calc
+        Wgrad[l] = np.dot(resid[:, l:], shift_cols(H, l).T)
 
     return loss, Wgrad
 
@@ -66,7 +67,7 @@ def compute_loadings(data, W, H):
     loadings = []
     K, T = H.shape
 
-    data_mag = norm(data.shift(0))
+    data_mag = norm(data)
 
     for i in range(K):
         Wi = W[:, :, i:i+1]

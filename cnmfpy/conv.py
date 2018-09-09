@@ -2,7 +2,7 @@ import numpy as np
 import numba
 
 
-@numba.jit
+#@numba.jit
 def tensor_conv(W, H):
     """
     Convolves a tensor W and matrix H.
@@ -29,7 +29,7 @@ def tensor_conv(W, H):
     return np.dot(W.reshape((N, L*K)), H_stacked)
 
 
-@numba.jit
+#@numba.jit
 def tensor_transconv(W, X):
     """
     Transpose tensor convolution of tensor `W` and matrix `X`.
@@ -61,7 +61,7 @@ def tensor_transconv(W, X):
     return result
 
 
-@numba.jit(nopython=True, cache=True)
+#@numba.jit(nopython=True, cache=True)
 def shift_cols(X, lag):
     """
     Shifts the columns of a matrix `X` right by `l` lags. Drops columns that
@@ -75,7 +75,7 @@ def shift_cols(X, lag):
         return X[:, :-lag]
 
 
-@numba.jit
+#@numba.jit
 def hunfold(W):
     """
     Unfold a tensor along its first mode, stacking horizontally.
@@ -84,7 +84,7 @@ def hunfold(W):
     return np.swapaxes(W, 1, 2).reshape((K*L, N)).T
 
 
-@numba.jit
+#@numba.jit
 def hunfold_trans(M):
     """
     Unfold a tensor along its first mode, stacking the transpose of each

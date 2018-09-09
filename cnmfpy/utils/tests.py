@@ -2,11 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-import cnmfpy.regularize as reg
 from cnmfpy.cnmf import CNMF
-from cnmfpy.conv import ShiftMatrix
 from cnmfpy.utils.visual import sort_neurons
-
 
 
 def seq_nmf_data(N, T, L, K, sparsity=0.8):
@@ -49,15 +46,15 @@ if (__name__ == '__main__'):
         losses.append(model.loss_hist[-1])
 
     plt.figure()
-    plt.plot(range(1,K+1), losses)
+    plt.plot(range(1, K+1), losses)
 
     ordering = sort_neurons(model.W)
 
     plt.figure()
-    plt.imshow(model.predict()[ordering,:])
+    plt.imshow(model.predict()[ordering, :])
     plt.title('Predicted')
 
     plt.figure()
-    plt.imshow(data[ordering,:])
+    plt.imshow(data[ordering, :])
 
     plt.show()

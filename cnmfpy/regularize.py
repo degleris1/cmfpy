@@ -6,14 +6,14 @@ from cnmfpy.conv import shift_cols, tensor_transconv
 
 
 def compute_scfo_reg(data, W, H, kernel):
-    # smooth H
-    smooth_H = _smooth(H.shift(0).T, kernel)
-
-    # penalize H
-    pen_H = np.dot(data.shift(0), smooth_H)
-
+    # TODO where to apply operations???
     # penalize W
-    penalty = tensor_transconv(W, pen_H)
+    pen_W = tensor_transconv(W, data)
+
+    # smooth and penalize H
+    smooth_H = _smooth(H.T, kernel)
+    penalty = np.dot(pen_W, smooth_H)
+
     return norm(penalty)
 
 
@@ -41,7 +41,7 @@ def compute_scfo_gH(data, W, H, kernel):
     K, T = H.shape
 
     # smooth data
-    smooth_data = _smooth(data.shift(0), kernel)
+    smooth_data = _smooth(data, kernel)
 
     not_eye = np.ones((K, K)) - np.eye(K)
 
@@ -51,7 +51,8 @@ def compute_scfo_gH(data, W, H, kernel):
 
 def compute_smooth_kernel(maxlag):
     # TODO check
-    return np.ones([1, 2*maxlag+1])
+    # 2*maxlag + 1
+    return np.ones([1, maxlag])
 
 
 def _smooth(X, kernel):

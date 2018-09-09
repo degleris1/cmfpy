@@ -1,8 +1,8 @@
-from cnmfpy.cnmf import CNMF
+from .cnmf import CNMF
 
-import cnmfpy.utils
-import cnmfpy.optimize
-import cnmfpy.regularize
-import cnmfpy.conv
+from . import conv
+from . import optimize
+from . import regularize
+from . import utils
 
 __version__ = '0.0.1'
