@@ -26,7 +26,7 @@ def tensor_conv(W, H):
     for lag in range(L):
         H_stacked[K*lag:K*(lag+1), lag:] = shift_cols(H, lag)
 
-    return np.dot(W.reshape((N, L*K)), H_stacked)
+    return np.dot(hunfold(W), H_stacked)
 
 
 #@numba.jit

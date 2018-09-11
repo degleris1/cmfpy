@@ -20,7 +20,6 @@ def fit_mult(data, model):
 
     itr = 0
     for itr in trange(model.n_iter_max):
-        print('W', np.sum(model.W), ', H', np.sum(model.H))
 
         if (np.isnan(model.W).any()):
             raise Exception('W has Nans!!')
@@ -69,8 +68,6 @@ def _compute_mult_W(data, model):
         denom[l] = np.dot(est[:, l:], shift_cols(model.H, l).T) + \
                           reg_gW[l] + model.l1_W
 
-    #print('W', norm(num), norm(denom))
-
     return num, denom + EPSILON
 
 
@@ -81,9 +78,5 @@ def _compute_mult_H(data, model):
 
     num = tensor_transconv(model.W, data)
     denom = tensor_transconv(model.W, est) + reg_gH + model.l1_H
-
-    #print(norm(np.divide(num, denom)))
-
-    #print('H', norm(num), norm(denom))
 
     return num, denom + EPSILON
