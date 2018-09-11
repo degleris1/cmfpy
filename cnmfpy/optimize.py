@@ -4,7 +4,7 @@ from numpy.linalg import norm
 from cnmfpy.conv import shift_cols, tensor_conv, tensor_transconv
 
 
-EPSILON = np.finfo(np.float32).eps
+EPSILON = np.finfo(np.float).eps
 
 
 def compute_gH(data, W, H):
@@ -79,16 +79,19 @@ def compute_loadings(data, W, H):
 
 
 def renormalize(W, H):
-    """ Renormalizes the rows of H to have constant energy.
+    """
+    Renormalizes the rows of H to have constant energy.
     Updates passed parameters.
     """
+    # TODO choice of norm??
     L, N, K = W.shape
 
-    row_norms = norm(H, axis=1)
-    H = np.diag(np.divide(1, row_norms+EPSILON)).dot(H)
+    row_norms = norm(H, axis=1) + EPSILON
+
+    H = np.diag(np.divide(1, row_norms)).dot(H)
 
     for l in range(L):
-        W[l] = W[l].dot(np.diag(row_norms+EPSILON))
+        W[l] = W[l].dot(np.diag(row_norms))
 
     return W, H
 

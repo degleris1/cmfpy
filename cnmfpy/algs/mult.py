@@ -1,12 +1,15 @@
 import numpy as np
 from tqdm import trange
 
-from cnmfpy.conv import tensor_transconv
+from numpy.linalg import norm
+
+from cnmfpy.conv import tensor_transconv, shift_cols
 from cnmfpy.optimize import compute_loss, renormalize
 from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH
 
 
-EPSILON = np.finfo(np.float32).eps
+# TODO float or float32?
+EPSILON = np.finfo(np.float).eps
 
 
 def fit_mult(data, model):
@@ -17,9 +20,17 @@ def fit_mult(data, model):
 
     itr = 0
     for itr in trange(model.n_iter_max):
+        print('W', np.sum(model.W), ', H', np.sum(model.H))
+
+        if (np.isnan(model.W).any()):
+            raise Exception('W has Nans!!')
+
+        if (np.isnan(model.H).any()):
+            raise Exception('H has NANs!!')
+
         # shift factors
-        #if ((itr % 5 == 0) and (model.n_iter_max - itr > 15)):
-            #model.W, model.H = shift_factors(model.W, model.H)
+        # if ((itr % 5 == 0) and (model.n_iter_max - itr > 15)):
+            # model.W, model.H = shift_factors(model.W, model.H)
 
         # compute multiplier for W
         num_W, denom_W = _compute_mult_W(data, model)
@@ -54,10 +65,13 @@ def _compute_mult_W(data, model):
 
     # TODO: broadcast
     for l in np.arange(model.W.shape[0]):
-        num[l] = np.dot(data.shift(0), model.H.shift(l).T)
-        denom[l] = np.dot(est, model.H.shift(l).T) + reg_gW[l] + model.l1_W
+        num[l] = np.dot(data[:, l:], shift_cols(model.H, l).T)
+        denom[l] = np.dot(est[:, l:], shift_cols(model.H, l).T) + \
+                          reg_gW[l] + model.l1_W
 
-    return num, denom+EPSILON
+    #print('W', norm(num), norm(denom))
+
+    return num, denom + EPSILON
 
 
 def _compute_mult_H(data, model):
@@ -68,4 +82,8 @@ def _compute_mult_H(data, model):
     num = tensor_transconv(model.W, data)
     denom = tensor_transconv(model.W, est) + reg_gH + model.l1_H
 
-    return num, denom+EPSILON
+    #print(norm(np.divide(num, denom)))
+
+    #print('H', norm(num), norm(denom))
+
+    return num, denom + EPSILON

@@ -75,6 +75,20 @@ def shift_cols(X, lag):
         return X[:, :-lag]
 
 
+def pad_shift_cols(X, l):
+    """
+    Shifts matrix X along second axis and zero pads
+
+    TODO: reduce cases
+    """
+    if l < 0:
+        return np.pad(X, ((0, 0), (0, -l)), mode='constant')[:, -l:]
+    elif l > 0:
+        return np.pad(X, ((0, 0), (l, 0)), mode='constant')[:, :-l]
+    else:
+        return X
+
+
 #@numba.jit
 def hunfold(W):
     """
@@ -92,17 +106,3 @@ def hunfold_trans(M):
     """
     L, N, K = M.shape
     return M.reshape((L*N, K)).T
-
-
-def pad_shift_cols(X, l):
-    """
-    Shifts matrix X along second axis and zero pads
-
-    TODO: reduce cases
-    """
-    if l < 0:
-        return np.pad(X, ((0, 0), (0, -l)), mode='constant')[:, -l:]
-    elif l > 0:
-        return np.pad(X, ((0, 0), (l, 0)), mode='constant')[:, :-l]
-    else:
-        return X

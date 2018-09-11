@@ -1,6 +1,6 @@
 import numpy as np
 
-from numpy.linalg import norm
+from numpy.linalg import norm, multi_dot
 from scipy.signal import convolve2d
 from cnmfpy.conv import shift_cols, tensor_transconv
 
@@ -19,20 +19,21 @@ def compute_scfo_reg(data, W, H, kernel):
 
 def compute_scfo_gW(data, W, H, kernel):
     # TODO switch dot to multidot
-
     K, T = H.shape
 
     # preallocate
     sfco_gradW = np.empty(W.shape)
 
     # smooth H
-    smooth_H = _smooth(H.T, kernel)
+    smooth_H_T = _smooth(H.T, kernel)
 
-    not_eye = np.ones((K, K)) - np.eye(K)
+    not_eye = 1 - np.eye(K)
 
     # TODO: broadcast
     for l in np.arange(W.shape[0]):
-        sfco_gradW[l] = shift_cols(data, -l).dot(smooth_H).dot(not_eye)
+        sfco_gradW[l] = multi_dot([shift_cols(data, -l),
+                                   smooth_H_T[:T-l, :],
+                                   not_eye])
 
     return sfco_gradW
 
@@ -40,19 +41,16 @@ def compute_scfo_gW(data, W, H, kernel):
 def compute_scfo_gH(data, W, H, kernel):
     K, T = H.shape
 
-    # smooth data
-    smooth_data = _smooth(data, kernel)
+    # W penalty
+    pen_W = tensor_transconv(W, data)
 
-    not_eye = np.ones((K, K)) - np.eye(K)
-
-    # apply transpose convolution
-    return not_eye.dot(tensor_transconv(W, smooth_data))
+    not_eye = 1 - np.eye(K)
+    return np.dot(not_eye, _smooth(pen_W, kernel))
 
 
 def compute_smooth_kernel(maxlag):
     # TODO check
-    # 2*maxlag + 1
-    return np.ones([1, maxlag])
+    return np.ones([1, 2*maxlag+1])
 
 
 def _smooth(X, kernel):
