@@ -5,10 +5,11 @@ Written by Alex Williams and Anthony Degleris.
 """
 import numpy as np
 
-from cnmfpy.conv import tensor_conv
-from cnmfpy.optimize import compute_loadings
-from cnmfpy.regularize import compute_smooth_kernel
-from cnmfpy.algs import fit_bcd, fit_mult
+from .conv import tensor_conv
+from .optimize import compute_loadings
+from .regularize import compute_smooth_kernel
+from .algs import fit_bcd, fit_mult
+from .initialize import init_rand
 
 
 class CNMF(object):
@@ -62,7 +63,7 @@ class CNMF(object):
         self._kernel = compute_smooth_kernel(maxlag)
         self.loss_hist = None
 
-    def fit(self, data, alg='mult'):
+    def fit(self, data, init='rand', alg='mult'):
         """
         Fit a CNMF model to the data.
 
@@ -82,15 +83,13 @@ class CNMF(object):
         if (data < 0).any():
             raise ValueError('Negative values in data to fit')
 
-        mag = np.amax(data)
-        n_neurons, n_time = data.shape
+        # Initialize W and H
+        if (init == 'rand'):
+            self.W, self.H = init_rand(self, data)
+        else:
+            raise ValueError('No such algorithm found.')
 
-        # initialize W and H
-        self.W = mag * np.abs(np.random.rand(self.maxlag, n_neurons,
-                                             self.n_components))
-        self.H = mag * np.abs(np.random.rand(self.n_components, n_time))
-
-        # optimize
+        # Optimize
         if (alg == 'bcd_backtrack'):
             fit_bcd(data, self, step_type='backtrack')
         elif (alg == 'bcd_const'):
@@ -100,10 +99,10 @@ class CNMF(object):
         else:
             raise ValueError('No such algorithm found.')
 
-        # compute explanatory power of each factor
+        # Compute explanatory power of each factor
         loadings = compute_loadings(data, self.W, self.H)
 
-        # sort factors by power
+        # Sort factors by power
         ind = np.argsort(loadings)
         self.W = self.W[:, :, ind]
         self.H = self.H[ind, :]
