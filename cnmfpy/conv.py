@@ -19,14 +19,9 @@ def tensor_conv(W, H):
     X : ndarray, shape (n_neurons, n_time)
         Tensor convolution of W and H.
     """
-    L, N, K = W.shape
-    T = H.shape[1]
+    L = W.shape[0]
 
-    H_stacked = np.zeros((L*K, T))
-    for lag in range(L):
-        H_stacked[K*lag:K*(lag+1), lag:] = shift_cols(H, lag)
-
-    return np.dot(hunfold(W), H_stacked)
+    return np.dot(hunfold(W), shift_and_stack(H, L))
 
 
 #@numba.jit
@@ -106,3 +101,17 @@ def hunfold_trans(M):
     """
     L, N, K = M.shape
     return M.reshape((L*N, K)).T
+
+
+#@numba.jit
+def shift_and_stack(H, L):
+    """
+    Vertically stack several shifted copies of H.
+    """
+    K, T = H.shape
+
+    H_stacked = np.zeros((L*K, T))
+    for lag in range(L):
+        H_stacked[K*lag:K*(lag+1), lag:] = shift_cols(H, lag)
+
+    return H_stacked
