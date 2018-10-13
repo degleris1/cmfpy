@@ -8,7 +8,7 @@ import numpy as np
 from .conv import tensor_conv
 from .optimize import compute_loadings
 from .regularize import compute_smooth_kernel
-from .algs import fit_bcd, fit_mult
+from .algs import fit_bcd, fit_mult, fit_chals
 from .initialize import init_rand
 
 
@@ -96,6 +96,8 @@ class CNMF(object):
             fit_bcd(data, self, step_type='constant')
         elif (alg == 'mult'):
             fit_mult(data, self)
+        elif (alg == 'chals'):
+            fit_chals(data, self)
         else:
             raise ValueError('No such algorithm found.')
 
