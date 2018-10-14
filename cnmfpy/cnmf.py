@@ -83,7 +83,7 @@ class CNMF(object):
         if (data < 0).any():
             raise ValueError('Negative values in data to fit')
 
-        mag = np.amax(data)
+        mag = np.amax(data)  # TODO - maybe use median?
         n_neurons, n_time = data.shape
 
         # initialize W and H

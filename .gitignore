@@ -45,3 +45,7 @@ experiments/
 # Figures
 figures/*.pdf
 figures/*.png
+
+# Pytest
+.pytest_cache/
+
