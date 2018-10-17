@@ -14,7 +14,7 @@ from .initialize import init_rand
 
 class CNMF(object):
     def __init__(self, n_components, maxlag, tol=1e-5, n_iter_max=100,
-                 l2_scfo=0, l1_W=0.0, l1_H=0.0):
+                 l2_scfo=0, l1_W=0.0, l1_H=0.0, method='mult'):
         """
         Convolutive Non-Negative Matrix Factorization (CNMF)
 
@@ -62,8 +62,10 @@ class CNMF(object):
 
         self._kernel = compute_smooth_kernel(maxlag)
         self.loss_hist = None
+        self.method = method
 
-    def fit(self, data, init='rand', alg='mult'):
+
+    def fit(self, data):
         """
         Fit a CNMF model to the data.
 
@@ -89,12 +91,12 @@ class CNMF(object):
         else:
             raise ValueError('No such algorithm found.')
 
-        # Optimize
-        if (alg == 'bcd_backtrack'):
+        # optimize
+        if (self.method == 'bcd_backtrack'):
             fit_bcd(data, self, step_type='backtrack')
-        elif (alg == 'bcd_const'):
+        elif (self.method == 'bcd_const'):
             fit_bcd(data, self, step_type='constant')
-        elif (alg == 'mult'):
+        elif (self.method == 'mult'):
             fit_mult(data, self)
         elif (alg == 'chals'):
             fit_chals(data, self)

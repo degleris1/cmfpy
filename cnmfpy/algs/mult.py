@@ -1,5 +1,6 @@
 import numpy as np
 from tqdm import trange
+import time
 
 from numpy.linalg import norm
 
@@ -17,6 +18,9 @@ def fit_mult(data, model):
 
     # initial loss
     model.loss_hist = [compute_loss(data, model.W, model.H)]
+    model.time_hist = [0.0]
+    t0 = time.time()
+
 
     itr = 0
     for itr in trange(model.n_iter_max):
@@ -42,7 +46,8 @@ def fit_mult(data, model):
 
         # update H
         model.H = np.divide(np.multiply(model.H, num_H), denom_H)
-        model.loss_hist += [compute_loss(data, model.W, model.H)]
+        model.loss_hist.append(compute_loss(data, model.W, model.H))
+        model.time_hist.append(time.time() - t0)
 
         # renormalize H
         model.W, model.H = renormalize(model.W, model.H)

@@ -41,3 +41,7 @@ data/
 
 # Experimental features
 experiments/
+
+# Figures
+figures/*.pdf
+figures/*.png
