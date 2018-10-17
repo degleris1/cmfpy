@@ -99,3 +99,4 @@ def update_H_component(W, H, X, k):
     for t in range(T):
         resid_slice = resid[:, t:t+L] + (H[k, t] * Wk)[:, :T-t]
         H[k, t] = new_H_entry(Wk[:, :T-t], norm_Wk, resid_slice)
+        resid[:, t:t+L] = resid_slice[:, t:t+L] - (H[k, t] * Wk)[:, :T-t]
