@@ -12,7 +12,7 @@ from .algs import fit_bcd, fit_mult, fit_chals
 from .initialize import init_rand
 
 
-class CNMF(object):
+class CMF(object):
     def __init__(self, n_components, maxlag, tol=1e-5, n_iter_max=100,
                  l2_scfo=0, l1_W=0.0, l1_H=0.0, method='mult'):
         """
@@ -64,7 +64,6 @@ class CNMF(object):
         self.loss_hist = None
         self.method = method
 
-
     def fit(self, data):
         """
         Fit a CNMF model to the data.
@@ -100,7 +99,7 @@ class CNMF(object):
             fit_bcd(data, self, step_type='constant')
         elif (self.method == 'mult'):
             fit_mult(data, self)
-        elif (alg == 'chals'):
+        elif (self.method == 'chals'):
             fit_chals(data, self)
         else:
             raise ValueError('No such algorithm found.')

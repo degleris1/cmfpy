@@ -1,4 +1,4 @@
-from cmfpy import CNMF
+from cmfpy import CMF
 from cmfpy import datasets
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,7 +41,7 @@ for data, ax in zip(all_datasets, axes):
     for method, color in zip(all_algorithms, colors):
 
         # Create model.
-        model = CNMF(method=method, **model_options)
+        model = CMF(method=method, **model_options)
         model.fit(data.generate())
 
         # Plot learning curve.
