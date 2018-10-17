@@ -85,11 +85,13 @@ class CNMF(object):
         if (data < 0).any():
             raise ValueError('Negative values in data to fit')
 
-        # Initialize W and H
-        if (init == 'rand'):
-            self.W, self.H = init_rand(self, data)
-        else:
-            raise ValueError('No such algorithm found.')
+        mag = np.amax(data)  # TODO - maybe use median?
+        n_neurons, n_time = data.shape
+
+        # initialize W and H
+        self.W = mag * np.abs(np.random.rand(self.maxlag, n_neurons,
+                                             self.n_components))
+        self.H = mag * np.abs(np.random.rand(self.n_components, n_time))
 
         # optimize
         if (self.method == 'bcd_backtrack'):
