@@ -20,10 +20,10 @@ def fit_chals(data, model):
     for itr in trange(model.n_iter_max):
 
         if (np.isnan(model.W).any()):
-            raise Exception('W has Nans!!')
+            raise ValueError('W has Nans!!')
 
         if (np.isnan(model.H).any()):
-            raise Exception('H has NANs!!')
+            raise ValueError('H has NANs!!')
 
         # shift factors
         # if ((itr % 5 == 0) and (model.n_iter_max - itr > 15)):
