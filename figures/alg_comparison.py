@@ -1,5 +1,5 @@
-from cnmfpy import CNMF
-from cnmfpy import datasets
+from cmfpy import CNMF
+from cmfpy import datasets
 import matplotlib.pyplot as plt
 import numpy as np
 import palettable
