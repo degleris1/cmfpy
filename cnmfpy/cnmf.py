@@ -5,10 +5,11 @@ Written by Alex Williams and Anthony Degleris.
 """
 import numpy as np
 
-from cnmfpy.conv import tensor_conv
-from cnmfpy.optimize import compute_loadings
-from cnmfpy.regularize import compute_smooth_kernel
-from cnmfpy.algs import fit_bcd, fit_mult
+from .conv import tensor_conv
+from .optimize import compute_loadings
+from .regularize import compute_smooth_kernel
+from .algs import fit_bcd, fit_mult, fit_chals
+from .initialize import init_rand
 
 
 class CNMF(object):
@@ -63,6 +64,7 @@ class CNMF(object):
         self.loss_hist = None
         self.method = method
 
+
     def fit(self, data):
         """
         Fit a CNMF model to the data.
@@ -98,13 +100,15 @@ class CNMF(object):
             fit_bcd(data, self, step_type='constant')
         elif (self.method == 'mult'):
             fit_mult(data, self)
+        elif (alg == 'chals'):
+            fit_chals(data, self)
         else:
             raise ValueError('No such algorithm found.')
 
-        # compute explanatory power of each factor
+        # Compute explanatory power of each factor
         loadings = compute_loadings(data, self.W, self.H)
 
-        # sort factors by power
+        # Sort factors by power
         ind = np.argsort(loadings)
         self.W = self.W[:, :, ind]
         self.H = self.H[ind, :]
