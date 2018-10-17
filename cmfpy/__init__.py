@@ -1,4 +1,4 @@
-from .cnmf import CNMF
+from .model import CMF
 
 from . import conv
 from . import optimize

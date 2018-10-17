@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
-from cnmfpy.utils import ModelDimensions
-from cnmfpy.optimize import compute_gH, compute_gW, compute_loss
-from cnmfpy.datasets import Synthetic, SongbirdHVC
+from cmfpy.utils import ModelDimensions
+from cmfpy.optimize import compute_gH, compute_gW, compute_loss
+from cmfpy.datasets import Synthetic, SongbirdHVC
 from scipy.optimize import check_grad
 
 TOL = 1e-4
