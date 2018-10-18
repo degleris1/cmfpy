@@ -2,7 +2,8 @@ import numpy as np
 
 from numpy.linalg import norm, multi_dot
 from scipy.signal import convolve2d
-from cnmfpy.conv import shift_cols, tensor_transconv
+
+from .conv import shift_cols, tensor_transconv
 
 
 def compute_scfo_reg(data, W, H, kernel):

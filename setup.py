@@ -9,7 +9,7 @@ config = {
     'name': 'cmfpy',
     'packages': find_packages(exclude=['doc']),
     'description': 'Tools for Convolutive Matrix Factorization',
-    'author': 'Anthony Degleris, Alex Williams',
+    'author': 'Anthony Degleris, Alex Williams, Ben Antin',
     'author_email': 'degleris@stanford.edu',
     'url': 'https://github.com/degleris1/cmfpy',
 }

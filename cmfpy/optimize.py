@@ -1,7 +1,7 @@
 import numpy as np
 
 from numpy.linalg import norm
-from cnmfpy.conv import shift_cols, tensor_conv, tensor_transconv
+from .conv import shift_cols, tensor_conv, tensor_transconv
 
 
 EPSILON = np.finfo(np.float).eps
