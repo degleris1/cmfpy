@@ -4,9 +4,9 @@ import time
 
 from numpy.linalg import norm
 
-from cnmfpy.conv import tensor_transconv, shift_cols
-from cnmfpy.optimize import compute_loss, renormalize
-from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH
+from ..conv import tensor_transconv, shift_cols
+from ..optimize import compute_loss, renormalize
+from ..regularize import compute_scfo_gW, compute_scfo_gH
 
 
 # TODO float or float32?

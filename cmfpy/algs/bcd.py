@@ -2,8 +2,8 @@ import numpy as np
 import numpy.linalg as la
 from tqdm import trange
 
-from cnmfpy.optimize import compute_gW, compute_gH, soft_thresh, compute_loss
-from cnmfpy.regularize import compute_scfo_gW, compute_scfo_gH, compute_scfo_reg
+from ..optimize import compute_gW, compute_gH, soft_thresh, compute_loss
+from ..regularize import compute_scfo_gW, compute_scfo_gH, compute_scfo_reg
 
 
 def fit_bcd(data, model, step_type='constant'):
