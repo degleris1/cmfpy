@@ -6,8 +6,8 @@ Written by Alex Williams and Anthony Degleris.
 import numpy as np
 from numpy.linalg import norm
 
-import cmfpy.algs as algs
-import cmfpy.initialize as initialize
+from . import algs
+from . import initialize
 
 from .conv import tensor_conv
 from .optimize import compute_loadings
