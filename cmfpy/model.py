@@ -4,12 +4,14 @@ A Python implementation of CNMF.
 Written by Alex Williams and Anthony Degleris.
 """
 import numpy as np
+from numpy.linalg import norm
+
+import algs
+import initialize
 
 from .conv import tensor_conv
 from .optimize import compute_loadings
 from .regularize import compute_smooth_kernel
-from .algs import fit_bcd, fit_mult, fit_chals
-from .initialize import init_rand
 
 
 class CMF(object):
@@ -84,23 +86,19 @@ class CMF(object):
         if (data < 0).any():
             raise ValueError('Negative values in data to fit')
 
-        mag = np.amax(data)  # TODO - maybe use median?
-        n_neurons, n_time = data.shape
-
+        # TODO - maybe use median?
         # initialize W and H
-        self.W = mag * np.abs(np.random.rand(self.maxlag, n_neurons,
-                                             self.n_components))
-        self.H = mag * np.abs(np.random.rand(self.n_components, n_time))
+        self.W, self.H = initialize.init_rand(self, data)
 
         # optimize
         if (self.method == 'bcd_backtrack'):
-            fit_bcd(data, self, step_type='backtrack')
+            algs.fit_bcd(data, self, step_type='backtrack')
         elif (self.method == 'bcd_const'):
-            fit_bcd(data, self, step_type='constant')
+            algs.fit_bcd(data, self, step_type='constant')
         elif (self.method == 'mult'):
-            fit_mult(data, self)
+            algs.fit_mult(data, self)
         elif (self.method == 'chals'):
-            fit_chals(data, self)
+            algs.fit_chals(data, self)
         else:
             raise ValueError('No such algorithm found.')
 
@@ -127,6 +125,28 @@ class CMF(object):
         self._check_is_fitted()
 
         return tensor_conv(self.W, self.H)
+
+    def score(self, data):
+        """
+        Return the R^2 score, defined as the one minus the squared norm of the
+        error divided by the square norm of the data.
+
+        Parameters
+        ----------
+        data : array-like, shape (n_time, n_features)
+            Data to fit when scoring.
+
+        Returns
+        -------
+        score : float
+            A score for how well the model fits the data. A score of 1 is
+            perfect.
+
+        TODO: demean the data
+        """
+        error = self.predict() - data
+
+        return 1 - (norm(error)**2 / norm(data)**2)
 
     def _check_is_fitted(self):
         """
