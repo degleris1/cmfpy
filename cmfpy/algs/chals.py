@@ -1,46 +1,16 @@
 import numpy as np  # Linear algebra
 import numpy.linalg as la
 
-from tqdm import trange
-
 from ..conv import tensor_conv, shift_and_stack, hunfold
-from ..optimize import compute_loss, renormalize
 
 # TODO make EPSILON universal
 EPSILON = np.finfo(np.float).eps
 
 
-def fit_chals(data, model):
-    N, T = data.shape
-
-    # initial loss
-    model.loss_hist = [compute_loss(data, model.W, model.H)]
-
-    itr = 0
-    for itr in trange(model.n_iter_max):
-
-        if (np.isnan(model.W).any()):
-            raise ValueError('W has Nans!!')
-
-        if (np.isnan(model.H).any()):
-            raise ValueError('H has NANs!!')
-
-        # shift factors
-        # if ((itr % 5 == 0) and (model.n_iter_max - itr > 15)):
-            # model.W, model.H = shift_factors(model.W, model.H)
-
-        for k in range(model.n_components):
-            update_W_component(model.W, model.H, data, k)
-            update_H_component(model.W, model.H, data, k)
-
-        # Update loss history and renormalize H
-        model.loss_hist += [compute_loss(data, model.W, model.H)]
-        model.W, model.H = renormalize(model.W, model.H)
-
-        # check convergence
-        prev_loss, new_loss = model.loss_hist[-2:]
-        if (np.abs(prev_loss - new_loss) < model.tol):
-            break
+def chals_step(data, model):
+    for k in range(model.n_components):
+        update_W_component(model.W, model.H, data, k)
+        update_H_component(model.W, model.H, data, k)
 
 
 def update_W_col(W, H, X, k, l):
@@ -97,6 +67,6 @@ def update_H_component(W, H, X, k):
 
     # Update each entry in the row, from left to right
     for t in range(T):
-        resid_slice = resid[:, t:t+L] + (H[k, t] * Wk)[:, :T-t]
+        resid_slice = resid[:, t:t+L] + H[k, t] * Wk[:, :T-t]
         H[k, t] = new_H_entry(Wk[:, :T-t], norm_Wk, resid_slice)
-        resid[:, t:t+L] = resid_slice[:, t:t+L] - (H[k, t] * Wk)[:, :T-t]
+        resid[:, t:t+L] = resid_slice - H[k, t] * Wk[:, :T-t]

@@ -10,8 +10,10 @@ def init_rand(model, data):
 
     mag = np.amax(data)
 
-    W = mag * np.abs(np.random.rand(model.maxlag, n_neurons,
+    W = mag * np.abs(np.random.rand(model.maxlag,
+                                    n_neurons,
                                     model.n_components))
-    H = mag * np.abs(np.random.rand(model.n_components, n_time))
+    H = mag * np.abs(np.random.rand(model.n_components,
+                                    n_time))
 
     return W, H
