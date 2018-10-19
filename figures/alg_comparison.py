@@ -13,13 +13,14 @@ all_datasets = [
 ]
 all_algorithms = [
     "mult",
-    # "chals",
+    "chals",
 ]
 
 # Tunable parameters shared by all datasets/algorithms.
 model_options = {
     "n_components": 5,
     "maxlag": 10,
+    "tol": 1e-1,
     # "max_time": 20.0,  # TODO -- make this an option.
 }
 plot_options = {
@@ -48,6 +49,7 @@ for data, ax in zip(all_datasets, axes):
         ax.plot(model.time_hist, model.loss_hist,
                 color=color, label=method, **plot_options)
         ax.set_title(data.name)
+        ax.set_yscale('log')
 
 # Format subplots
 axes[0].set_ylabel("loss")
