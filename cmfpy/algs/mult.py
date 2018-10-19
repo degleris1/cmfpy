@@ -1,11 +1,6 @@
 import numpy as np
-from tqdm import trange
-import time
-
-from numpy.linalg import norm
 
 from ..conv import tensor_transconv, shift_cols
-from ..optimize import compute_loss, renormalize
 from ..regularize import compute_scfo_gW, compute_scfo_gH
 
 
@@ -13,49 +8,16 @@ from ..regularize import compute_scfo_gW, compute_scfo_gH
 EPSILON = np.finfo(np.float).eps
 
 
-def fit_mult(data, model):
-    m, n = data.shape
+def mult_step(data, model):
+    # compute multiplier for W
+    num_W, denom_W = _compute_mult_W(data, model)
+    # update W
+    model.W = np.divide(np.multiply(model.W, num_W), denom_W)
 
-    # initial loss
-    model.loss_hist = [compute_loss(data, model.W, model.H)]
-    model.time_hist = [0.0]
-    t0 = time.time()
-
-
-    itr = 0
-    for itr in trange(model.n_iter_max):
-
-        if (np.isnan(model.W).any()):
-            raise Exception('W has Nans!!')
-
-        if (np.isnan(model.H).any()):
-            raise Exception('H has NANs!!')
-
-        # shift factors
-        # if ((itr % 5 == 0) and (model.n_iter_max - itr > 15)):
-            # model.W, model.H = shift_factors(model.W, model.H)
-
-        # compute multiplier for W
-        num_W, denom_W = _compute_mult_W(data, model)
-
-        # update W
-        model.W = np.divide(np.multiply(model.W, num_W), denom_W)
-
-        # compute multiplier for H
-        num_H, denom_H = _compute_mult_H(data, model)
-
-        # update H
-        model.H = np.divide(np.multiply(model.H, num_H), denom_H)
-        model.loss_hist.append(compute_loss(data, model.W, model.H))
-        model.time_hist.append(time.time() - t0)
-
-        # renormalize H
-        model.W, model.H = renormalize(model.W, model.H)
-
-        # check convergence
-        prev_loss, new_loss = model.loss_hist[-2:]
-        if (np.abs(prev_loss - new_loss) < model.tol):
-            break
+    # compute multiplier for H
+    num_H, denom_H = _compute_mult_H(data, model)
+    # update H
+    model.H = np.divide(np.multiply(model.H, num_H), denom_H)
 
 
 def _compute_mult_W(data, model):

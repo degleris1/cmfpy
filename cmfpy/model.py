@@ -6,8 +6,8 @@ Written by Alex Williams and Anthony Degleris.
 import numpy as np
 from numpy.linalg import norm
 
-import algs
-import initialize
+import cmfpy.algs as algs
+import cmfpy.initialize as initialize
 
 from .conv import tensor_conv
 from .optimize import compute_loadings
@@ -91,16 +91,7 @@ class CMF(object):
         self.W, self.H = initialize.init_rand(self, data)
 
         # optimize
-        if (self.method == 'bcd_backtrack'):
-            algs.fit_bcd(data, self, step_type='backtrack')
-        elif (self.method == 'bcd_const'):
-            algs.fit_bcd(data, self, step_type='constant')
-        elif (self.method == 'mult'):
-            algs.fit_mult(data, self)
-        elif (self.method == 'chals'):
-            algs.fit_chals(data, self)
-        else:
-            raise ValueError('No such algorithm found.')
+        algs.fit_alg(data, self, algs.ALGORITHMS[self.method])
 
         # Compute explanatory power of each factor
         loadings = compute_loadings(data, self.W, self.H)
