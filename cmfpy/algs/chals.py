@@ -8,14 +8,29 @@ EPSILON = np.finfo(np.float).eps
 
 
 def chals_step(data, model):
-    for k in range(model.n_components):
-        update_W_component(model.W, model.H, data, k)
+    update_W(model.W, model.H, data)
 
     update_H(model.W, model.H, data)
 
 
-def update_W():
-    pass
+def update_W(W, H, X):
+    L, N, K = W.shape
+
+    # Unfold matrices
+    H_unfold = shift_and_stack(H, L)
+
+    # Set up residual and norms
+    resid = X - tensor_conv(W, H)
+    H_norms = la.norm(H_unfold, axis=1)
+
+    assert H_norms.shape != L*K
+
+    for k in range(K):
+        for l in range(L):
+            ind = k*L + l
+            resid_adj = resid + np.outer(W[l, :, k], H_unfold[ind, :])
+            W[l, :, k] = new_W_col(H_unfold[ind, :], H_norms[ind], resid_adj)
+            resid = resid_adj - np.outer(W[l, :, k], H_unfold[ind, :])
 
 
 def update_H(W, H, X):
@@ -37,8 +52,11 @@ def update_H(W, H, X):
             resid[:, t:t+L] = resid_slice - H[k, t] * Wk[:, :T-t]
 
 
-def new_W_entry():
-    pass
+def new_W_col(Hkl, norm_Hkl, resid):
+    """
+    """
+    # TODO reconsider transpose
+    return np.maximum(np.dot(resid, Hkl) / (norm_Hkl**2 + EPSILON), 0)
 
 
 def new_H_entry(Wk, norm_Wk, resid_slice):

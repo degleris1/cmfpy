@@ -11,6 +11,7 @@ all_datasets = [
     datasets.Synthetic(n_components=5),
     datasets.SongbirdHVC(),
 ]
+
 all_algorithms = [
     "mult",
     "chals",
