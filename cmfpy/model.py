@@ -55,7 +55,7 @@ class CMF(object):
         self.W = None
         self.H = None
 
-        self.tol = 1e-4
+        self.tol = tol
         self.n_iter_max = n_iter_max
 
         self.l2_scfo = l2_scfo

@@ -10,6 +10,7 @@ EPSILON = np.finfo(np.float).eps
 def chals_step(data, model):
     for k in range(model.n_components):
         update_W_component(model.W, model.H, data, k)
+
     update_H(model.W, model.H, data)
 
 
@@ -21,15 +22,15 @@ def update_H(W, H, X):
     L, N, K = W.shape
     T = H.shape[1]
 
+    # Set up residual
     W_norms = la.norm(W, axis=(0, 1))  # Compute norms of each component
-
     resid = X - tensor_conv(W, H)
 
-    # Set up Wk and residual
+    # Update each component
     for k in range(K):
         Wk = W[:, :, k].T  # TODO: will this slow things down?
 
-        # Update each entry in the row, from left to right
+        # Update each timebin
         for t in range(T):
             resid_slice = resid[:, t:t+L] + H[k, t] * Wk[:, :T-t]
             H[k, t] = new_H_entry(Wk[:, :T-t], W_norms[k], resid_slice)
@@ -80,10 +81,10 @@ def update_W_component(W, H, X, k):
 
     for l in range(L):
         ind = k*L + l
-        W[l, :, k] = old_W_col_update(W_unfold, H_unfold, X, ind)
+        W[l, :, k] = W_col_update(W_unfold, H_unfold, X, ind)
 
 
-def old_W_col_update(W_unfold, H_unfold, X, ind):
+def W_col_update(W_unfold, H_unfold, X, ind):
     """
     Updates `W[l, :, k]` using the HALS update rule
     """

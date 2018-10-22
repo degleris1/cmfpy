@@ -45,14 +45,11 @@ for data, ax in zip(all_datasets, axes):
         model = CMF(method=method, **model_options)
         model.fit(data.generate())
 
-        print(np.linalg.norm(model.W))
-
         # Plot learning curve.
         ax.plot(model.time_hist, model.loss_hist,
                 color=color, label=method, **plot_options)
         ax.set_title(data.name)
         ax.set_ylim(0, 1)
-        # ax.set_yscale('log')
 
 # Format subplots
 axes[0].set_ylabel("loss")
@@ -60,6 +57,6 @@ for ax in axes:
     ax.set_xlabel("time (s)")
 axes[-1].legend()
 fig.tight_layout()
-fig.savefig("01_alg_comparison.pdf")
+# fig.savefig("01_alg_comparison.pdf")
 
 plt.show()
