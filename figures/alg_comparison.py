@@ -20,7 +20,7 @@ all_algorithms = [
 model_options = {
     "n_components": 5,
     "maxlag": 10,
-    "tol": 1e-1,
+    "tol": 1e-3,
     # "max_time": 20.0,  # TODO -- make this an option.
 }
 plot_options = {
@@ -45,11 +45,14 @@ for data, ax in zip(all_datasets, axes):
         model = CMF(method=method, **model_options)
         model.fit(data.generate())
 
+        print(np.linalg.norm(model.W))
+
         # Plot learning curve.
         ax.plot(model.time_hist, model.loss_hist,
                 color=color, label=method, **plot_options)
         ax.set_title(data.name)
-        ax.set_yscale('log')
+        ax.set_ylim(0, 1)
+        # ax.set_yscale('log')
 
 # Format subplots
 axes[0].set_ylabel("loss")

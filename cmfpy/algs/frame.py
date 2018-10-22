@@ -2,7 +2,7 @@ import numpy as np
 import time
 from tqdm import trange
 
-from ..optimize import compute_loss, renormalize
+from ..optimize import renormalize
 
 from .mult import mult_step
 from .chals import chals_step
@@ -15,7 +15,7 @@ def fit_alg(data, model, update_rule):
     m, n = data.shape
 
     # initial loss
-    model.loss_hist = [compute_loss(data, model.W, model.H)]
+    model.loss_hist = [model.score(data)]
     model.time_hist = [0.0]
     t0 = time.time()
 
@@ -30,7 +30,7 @@ def fit_alg(data, model, update_rule):
 
         update_rule(data, model)
 
-        model.loss_hist.append(compute_loss(data, model.W, model.H))
+        model.loss_hist.append(model.score(data))
         model.time_hist.append(time.time() - t0)
 
         # renormalize H
