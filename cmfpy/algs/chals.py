@@ -9,7 +9,6 @@ EPSILON = np.finfo(np.float).eps
 
 def chals_step(data, model):
     update_W(model.W, model.H, data)
-
     update_H(model.W, model.H, data)
 
 
@@ -68,6 +67,7 @@ def new_H_entry(Wk, norm_Wk, resid_slice):
 
 
 """
+DEPRECATED FUNCTIONS BELOW
 """
 
 
