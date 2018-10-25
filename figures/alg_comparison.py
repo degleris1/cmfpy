@@ -11,6 +11,7 @@ all_datasets = [
     datasets.Synthetic(n_components=5),
     datasets.SongbirdHVC(),
 ]
+
 all_algorithms = [
     "mult",
     "chals",
@@ -20,7 +21,7 @@ all_algorithms = [
 model_options = {
     "n_components": 5,
     "maxlag": 10,
-    "tol": 1e-1,
+    "tol": 1e-3,
     # "max_time": 20.0,  # TODO -- make this an option.
 }
 plot_options = {
@@ -49,7 +50,7 @@ for data, ax in zip(all_datasets, axes):
         ax.plot(model.time_hist, model.loss_hist,
                 color=color, label=method, **plot_options)
         ax.set_title(data.name)
-        ax.set_yscale('log')
+        ax.set_ylim(0, 1)
 
 # Format subplots
 axes[0].set_ylabel("loss")
@@ -57,6 +58,6 @@ for ax in axes:
     ax.set_xlabel("time (s)")
 axes[-1].legend()
 fig.tight_layout()
-fig.savefig("01_alg_comparison.pdf")
+# fig.savefig("01_alg_comparison.pdf")
 
 plt.show()
