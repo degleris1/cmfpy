@@ -20,41 +20,23 @@ class GradDescent(AbstractOptimizer):
     def __init__(self, data, dims, tol=1e-5, patience=3,
                  step_decrement=5., **kwargs):
 
-        # Check inputs,
-        if patience < 1 or not isinstance(patience, Integral):
-            raise ValueError("Patience must be a positive integer.")
-
         # Invoke super class initialization procedures.
-        super().__init__(data, dims, **kwargs)
+        super().__init__(data, dims, patience=patience, tol=tol, **kwargs)
 
         # TODO: results seem sensitive to step size so let's see if we
         # can get a rough lipshitz constant working....
         self.step_size = 1e-4
 
         # Hyperparameters.
-        self.tol = tol
-        self.patience = patience
         self.step_decrement = step_decrement
-
-        # Initialize W and H randomly.
-        if (self.W is None) or (self.H is None):
-            self.W, self.H = self.rand_init()
 
         # Preallocate space for gradients.
         self.gW = np.empty((self.maxlag, self.n_features, self.n_components))
         self.gH = np.empty((self.n_components, self.n_timepoints))
 
-        # Cache useful intermediate results. Norm of data matrix,
-        # residuals, and gradients.
-        self.normX = la.norm(data)
-        self.cache_resids()
+        # Cache gradients.
         self.cache_gW()
         self.cache_gH()
-
-    def cache_resids(self):
-        """Updates intermediate computations."""
-        self.est = cmf_predict(self.W, self.H)
-        self.resids = self.est - self.X
 
     def cache_gW(self):
         """Gradient of W. Stores result in `gW`."""

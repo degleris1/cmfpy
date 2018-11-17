@@ -52,3 +52,43 @@ def cmf_predict(W, H):
     for lag, Wl in enumerate(W):
         pred += s_dot(Wl, H, lag)
     return pred
+
+
+def tensor_transconv(W, X):
+    """
+    Transpose tensor convolution of tensor `W` and matrix `X`.
+    Parameters
+    ----------
+    W : ndarray, shape (n_lag, n_neurons, n_components)
+        Tensor of neural sequences.
+    X : ndarray, shape (n_components, n_time)
+        Matrix of time componenents.
+    Returns
+    -------
+    X : ndarray, shape (n_neurons, n_time)
+        Transpose tensor convolution of W and X, i.e. the tensor convolution
+        but shifted the opposite direction.
+    Notes
+    -----
+    # TODO: Consider speed up
+    """
+    L, N, K = W.shape
+    T = X.shape[1]
+
+    result = np.zeros((K, T))
+    for lag, w in enumerate(W):
+        result[:, :T-lag] += np.dot(w.T, shift_cols(X, -lag))
+
+    return result
+
+
+def shift_cols(X, lag):
+    """
+    Shifts the columns of a matrix `X` right by `l` lags. Drops columns that
+    are shifted beyond the dimension of the matrix.
+    # TODO: remove cases
+    """
+    if (lag <= 0):
+        return X[:, -lag:]
+    else:  # lag > 0
+        return X[:, :-lag]

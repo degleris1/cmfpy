@@ -1,49 +1,51 @@
 import numpy as np
 
-from ..conv import tensor_transconv, shift_cols
-from ..regularize import compute_scfo_gW, compute_scfo_gH
-
+from ..common import cmf_predict, tensor_transconv, shift_cols
+from .base import AbstractOptimizer
 
 # TODO float or float32?
 EPSILON = np.finfo(np.float).eps
 
 
-def mult_step(data, model):
-    # compute multiplier for W
-    num_W, denom_W = _compute_mult_W(data, model)
-    # update W
-    model.W = np.divide(np.multiply(model.W, num_W), denom_W)
+class MultUpdate(AbstractOptimizer):
+    """
+    Multiplicative update rule.
+    """
 
-    # compute multiplier for H
-    num_H, denom_H = _compute_mult_H(data, model)
-    # update H
-    model.H = np.divide(np.multiply(model.H, num_H), denom_H)
+    def __init__(self, data, dims, patience=3, tol=1e-5, **kwargs):
+        super().__init__(data, dims, patience=patience, tol=tol, **kwargs)
 
+    def update(self):
+        # update W
+        num_W, denom_W = self._compute_mult_W()
+        self.W = np.divide(np.multiply(self.W, num_W), denom_W + EPSILON)
 
-def _compute_mult_W(data, model):
-    # preallocate
-    num = np.zeros(model.W.shape)
-    denom = np.zeros(model.W.shape)
+        # update H
+        num_H, denom_H = self._compute_mult_H()
+        self.H = np.divide(np.multiply(self.H, num_H), denom_H + EPSILON)
 
-    est = model.predict()
-    reg_gW = model.l2_scfo * compute_scfo_gW(data, model.W, model.H,
-                                             model._kernel)
+        self.cache_resids()
+        return self.loss
 
-    # TODO: broadcast
-    for l in np.arange(model.W.shape[0]):
-        num[l] = np.dot(data[:, l:], shift_cols(model.H, l).T)
-        denom[l] = np.dot(est[:, l:], shift_cols(model.H, l).T) + \
-                          reg_gW[l] + model.l1_W
+    def _compute_mult_W(self):
+        # preallocate
+        num = np.zeros(self.W.shape)
+        denom = np.zeros(self.W.shape)
 
-    return num, denom + EPSILON
+        est = cmf_predict(self.W, self.H)
 
+        # TODO: broadcast
+        for l in np.arange(self.W.shape[0]):
+            # TODO switch to sdot
+            num[l] = np.dot(self.X[:, l:], shift_cols(self.H, l).T)
+            denom[l] = np.dot(est[:, l:], shift_cols(self.H, l).T)
 
-def _compute_mult_H(data, model):
-    est = model.predict()
-    reg_gH = model.l2_scfo * compute_scfo_gH(data, model.W, model.H,
-                                             model._kernel)
+        return num, denom
 
-    num = tensor_transconv(model.W, data)
-    denom = tensor_transconv(model.W, est) + reg_gH + model.l1_H
+    def _compute_mult_H(self):
+        est = cmf_predict(self.W, self.H)
 
-    return num, denom + EPSILON
+        num = tensor_transconv(self.W, self.X)
+        denom = tensor_transconv(self.W, est)
+
+        return num, denom
