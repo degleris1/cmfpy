@@ -1,6 +1,7 @@
 """Optimization methods for convolutive matrix factorization."""
 
 from .gradient_descent import GradDescent, BlockDescent
+from .mult import MultUpdate
 
 # from .mult import fit_mult, mult_step
 # from .chals import fit_chals
@@ -8,4 +9,5 @@ from .gradient_descent import GradDescent, BlockDescent
 ALGORITHMS = {
     "gd": GradDescent,
     "bcd": BlockDescent,
+    "mult": MultUpdate
 }

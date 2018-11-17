@@ -13,7 +13,7 @@ all_datasets = [
 ]
 
 all_algorithms = [
-    # "mult",
+    "mult",
     "bcd",
     # "gd",
 ]
