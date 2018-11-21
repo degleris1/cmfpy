@@ -13,7 +13,7 @@ class AbstractOptimizer:
     """Defines common API for optimizer objects."""
 
     def __init__(self, data, model_dimensions, initW=None, initH=None,
-                 tol=1e-5, patience=3, **kwargs):
+                 tol=1e-5, patience=3):
         """Initialize algorithm."""
 
         # Check inputs,
