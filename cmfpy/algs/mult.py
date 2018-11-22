@@ -64,6 +64,10 @@ class StochasticMultUpdate(MultUpdate):
 
         # Invoke super constructor, but additionally stores data window size.
         super().__init__(data, dims, patience=patience, tol=tol)
+        if (window_size > self.n_timepoints):
+            raise ValueError("Window Size must be less than "
+                             "or equal to the width of the data matrix. "
+                             "window_size = %d, n_timepoints=%d" % (window_size, self.n_timepoints))
         self.window_size = window_size
 
     def update(self):
@@ -73,7 +77,7 @@ class StochasticMultUpdate(MultUpdate):
 
         # Pick random window of data
         start_idx = np.random.randint(self.n_timepoints - self.window_size + 1)
-        t_idx = range(start_idx, start_idx + window_size)
+        t_idx = range(start_idx, start_idx + self.window_size)
 
         # Select time window.
         X = self.X[:, t_idx]
@@ -90,5 +94,28 @@ class StochasticMultUpdate(MultUpdate):
         # TODO: cache_resids needs to be changed so that it's limited to the
         # time window (t_idx)!!! Otherwise this step is going to be unfeasibly
         # expensive...
-        self.cache_resids()
+        self.cache_resids(t_idx, H)
         return self.loss
+
+    def cache_resids(self, t_idx=None, H=None):
+        """
+        Overrides the standard cache_resids function so that we only
+        compute residuals using a subset of the data matrix.
+        """
+        if ((self.W is None) or (self.H is None)):
+            raise ValueError("W or H not initalized.")
+
+        t_idx = t_idx if t_idx is not None else range(0, self.n_timepoints)
+        H = H if H is not None else self.H
+
+        # When super().__init__ is called, self.est and self.resids
+        # have not been initialized, so we initialize them if they are None.
+        if self.est is None:
+            self.est = cmf_predict(self.W, H)
+        else:
+            self.est[:, t_idx] = cmf_predict(self.W, H)
+
+        if self.resids is None:
+            self.resids = self.est - self.X
+        else:
+            self.resids[:, t_idx] = self.est[:, t_idx] - self.X[:, t_idx]
