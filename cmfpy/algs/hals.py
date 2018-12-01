@@ -124,7 +124,7 @@ class HALSUpdate(SimpleHALSUpdate):
         factors_tens = self.fold_factor(Wk, batch)
 
         # Clone Wk several times
-        Wk_clones = self.clone_Wk(Wk, n_batch)
+        Wk_clones = np.tile(Wk, (n_batch, 1))
 
         # Generate remainder (residual - factor) tensor and remove
         # factor contribution from residual
@@ -173,9 +173,3 @@ class HALSUpdate(SimpleHALSUpdate):
         Expand the factor tensor into a matrix.
         """
         return factors_tens.reshape(self.maxlag*n_batch, self.n_features).T
-
-    def clone_Wk(self, Wk, n_batch):
-        """
-        Clone Wk several times and place into a tensor.
-        """
-        return np.outer(np.ones(n_batch), Wk)
