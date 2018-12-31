@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import palettable
 
-
 # Tunable parameters shared by all datasets/algorithms.
 model_options = {
     "n_components": 5,
@@ -24,7 +23,6 @@ all_datasets = [
 all_algorithms = [
     "hals",
     "mult",
-    "hals_simple",
     # "bcd",
     # "gd",
 ]
@@ -53,16 +51,16 @@ for data, ax in zip(all_datasets, axes):
         model.fit(data.generate())
 
         # Plot learning curve.
-        # ax.plot(model.time_hist, model.loss_hist,
-        #         color=color, label=method, **plot_options)
-        ax.plot(model.loss_hist,
+        ax.plot(model.time_hist, model.loss_hist,
                 color=color, label=method, **plot_options)
+        # ax.plot(model.loss_hist,
+        #         color=color, label=method, **plot_options)
         ax.set_title(data.name)
 
 # Format subplots
 axes[0].set_ylabel("loss")
 for ax in axes:
-    ax.set_xlabel("iterations")
+    ax.set_xlabel("seconds")
 axes[-1].legend()
 fig.tight_layout()
 # fig.savefig("01_alg_comparison.pdf")
