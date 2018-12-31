@@ -3,6 +3,7 @@
 from .gradient_descent import GradDescent, BlockDescent
 from .mult import MultUpdate
 from .hals import HALSUpdate
+from .xray import XRAY
 
 # from .mult import fit_mult, mult_step
 # from .chals import fit_chals
@@ -12,4 +13,5 @@ ALGORITHMS = {
     "bcd": BlockDescent,
     "mult": MultUpdate,
     "hals": HALSUpdate,
+    "xray": XRAY,
 }

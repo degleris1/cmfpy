@@ -20,15 +20,9 @@ class HALSUpdate(AcceleratedOptimizer):
                          stop_thresh=stop_thresh, **kwargs)
 
         # Set up batches
-        self.batch_inds = []
-        self.batch_sizes = []
-        for k in range(self.n_components):
-            self.batch_sizes.append([])
-            self.batch_inds.append([])
-            for l in range(self.maxlag):
-                batch = range(l, self.n_timepoints-self.maxlag, self.maxlag)
-                self.batch_inds[k].append(batch)
-                self.batch_sizes[k].append(len(batch))
+        self.batch_sizes, self.batch_inds = _setup_batches(self.n_components,
+                                                           self.n_timepoints,
+                                                           self.maxlag)
 
     """
     W update
@@ -48,23 +42,50 @@ class HALSUpdate(AcceleratedOptimizer):
     """
 
     def setup_H_update(self):
-        L, N, K = self.W.shape
-
-        # Set up norms and cloned tensors
-        self.W_norms = la.norm(self.W, axis=1).T  # K * L, norm along N
-        self.W_raveled = []
-        self.W_clones = []
-        for k in range(K):
-            self.W_raveled.append(self.W[:, :, k].ravel())
-            self.W_clones.append([])
-            for l in range(L):
-                self.W_clones[k].append(np.tile(self.W_raveled[k],
-                                                (self.batch_sizes[k][l], 1)))
+        self.W_norms, self.W_raveled, self.W_clones = _setup_H_update(
+            self.W,
+            self.batch_sizes
+        )
 
     def update_H(self):
         _update_H(self.W, self.H, self.resids,
                   self.W_norms, self.W_raveled, self.W_clones,
                   self.batch_inds, self.batch_sizes)
+
+
+"""
+Setup methods
+"""
+
+
+def _setup_batches(n_components, n_timepoints, maxlag):
+    batch_inds = []
+    batch_sizes = []
+    for k in range(n_components):
+        batch_sizes.append([])
+        batch_inds.append([])
+        for l in range(maxlag):
+            batch = range(l, n_timepoints-maxlag, maxlag)
+            batch_inds[k].append(batch)
+            batch_sizes[k].append(len(batch))
+
+    return batch_sizes, batch_inds
+
+
+def _setup_H_update(W, batch_sizes):
+    L, N, K = W.shape
+
+    # Set up norms and cloned tensors
+    W_norms = la.norm(W, axis=1).T  # K * L, norm along N
+    W_raveled = []
+    W_clones = []
+    for k in range(K):
+        W_raveled.append(W[:, :, k].ravel())
+        W_clones.append([])
+        for l in range(L):
+            W_clones[k].append(np.tile(W_raveled[k], (batch_sizes[k][l], 1)))
+
+    return W_norms, W_raveled, W_clones
 
 
 """
@@ -209,11 +230,3 @@ def _fold_resids(start, n_batch, resids, L, N):
 def _next_H_batch(Wk_clones, norm_Wk, remainder):
         traces = np.inner(Wk_clones, -remainder)[0]
         return np.maximum(np.divide(traces, norm_Wk**2 + EPSILON), FACTOR_MIN)
-
-
-# def _clone_Wk(Wk, k, l, batch_sizes):
-#     """
-#     Clone Wk several times and place into a tensor.
-#     """
-#     n_batch = batch_sizes[k][l]
-#     return np.outer(np.ones(n_batch), Wk)
