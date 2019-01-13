@@ -93,6 +93,19 @@ def shift_cols(X, lag):
     else:  # lag > 0
         return X[:, :-lag]
 
+def shift_and_fill(X, lag):
+    """
+    Shifts the columns of a matrix `X` right by `l` lags and fills with zeros.
+    The returned matrix is the same shape as X.
+    """
+    if (lag <= 0):
+        X_s = X[:, -lag:]
+        return np.pad(X_s,((0,0),(0,lag)), mode='constant')
+    else:  # lag > 0
+        X_s = X[:, :-lag]
+        return np.pad(X_s,((0,0),(lag,0)), mode='constant')
+
+
 
 def shift_and_stack(H, L):
     """
