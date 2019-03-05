@@ -4,6 +4,7 @@ A Python implementation of CNMF.
 import numpy as np
 import numpy.random as npr
 import numpy.linalg as la
+import h5py
 
 import time
 from tqdm import trange
@@ -341,3 +342,22 @@ def shift_factors(W, H):
     H.assign(shifted_H)
 
     return W, H
+
+def load_cmfjl_model(path):
+    """
+    Loads a model saved by cmf.jl (using HD5/JLD) into a cmfpy
+    model object.
+    """
+    f = h5py.File(path)
+    data = np.array(f["data"]).T # Julia uses column-major order
+    W = np.swapaxes(np.array(f["W"]), 0, 2)
+
+    L, _, K = W.shape
+    model = CMF(K, L)
+
+    model._W = W
+    model._H = np.array(f["H"]).T
+    model.time_hist = np.array(f["time_hist"])
+    model.loss_hist = np.array(f["loss_hist"])
+
+    return (data, model)
