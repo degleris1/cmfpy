@@ -24,7 +24,7 @@ class XRAY(AbstractOptimizer):
     def update(self):
 
         # Initialize storage for W and H
-        self.W = np.empty((self.maxlag, self.n_features, self.n_components))
+        self.W = np.empty((self.maxlag, self.n_units, self.n_components))
         self.H = np.empty((self.n_components, self.n_timepoints))
 
         # Initialize residual matrix

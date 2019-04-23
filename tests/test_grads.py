@@ -18,7 +18,7 @@ EPS = 1e-7
 SEED = 1234
 N, T = 10, 200
 DATA = Synthetic(
-    n_features=N,
+    n_units=N,
     n_timebins=T,
     sparsity=.2,
 ).generate()

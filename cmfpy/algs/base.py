@@ -79,7 +79,7 @@ class AbstractOptimizer:
         """Default initialization procedure for model parameters."""
 
         # Randomize nonnegative parameters.
-        W = npr.rand(self.maxlag, self.n_features, self.n_components)
+        W = npr.rand(self.maxlag, self.n_units, self.n_components)
         H = npr.rand(self.n_components, self.n_timepoints)
 
         # Correct scale of parameters.

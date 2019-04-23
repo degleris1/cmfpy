@@ -16,7 +16,7 @@ model_options = {
 all_datasets = [
     datasets.Synthetic(n_components=model_options["n_components"],
                        n_lags=model_options["maxlag"],
-                       n_features=90, n_timebins=1000),
+                       n_units=90, n_timebins=1000),
     datasets.SongbirdHVC(),
 ]
 

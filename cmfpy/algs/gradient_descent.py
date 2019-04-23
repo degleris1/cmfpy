@@ -31,7 +31,7 @@ class GradDescent(AbstractOptimizer):
         self.step_decrement = step_decrement
 
         # Preallocate space for gradients.
-        self.gW = np.empty((self.maxlag, self.n_features, self.n_components))
+        self.gW = np.empty((self.maxlag, self.n_units, self.n_components))
         self.gH = np.empty((self.n_components, self.n_timepoints))
 
         # Cache gradients.
