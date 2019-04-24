@@ -165,8 +165,9 @@ class CMF(object):
         W0, H0 = getattr(initialize, self.init)(data, dims, self._rs)
 
         # Get fitting algorithm.
-        self.W_, self.H_, self.info_ = \
+        self.W_, self.H_, raw_info = \
             getattr(algs, self.method)(data, W0, H0, **self.alg_opts)
+        self.info_ = dict(raw_info)
 
         # Undo zero-padding
         self.H_ = self.H_[:, self.maxlag:-self.maxlag]
