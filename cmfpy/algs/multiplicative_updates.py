@@ -65,7 +65,7 @@ def mult(
                     W_denom += np.dot(W[j], HHt[L - 1 + j - i])
 
                 # Update parameters.
-                W[i] *= W_nums[i] / W_denom
+                W[i] *= W_nums[i] / (W_denom + l1_W)
 
         # == UPDATE H == #
 
@@ -103,7 +103,7 @@ def mult(
                     j = i
 
             # Update parameters
-            H *= H_num / H_denom
+            H *= H_num / (H_denom + l1_H)
 
         # == CHECK CONVERGENCE == #
         itercount += 1
